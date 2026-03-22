@@ -70,6 +70,14 @@ const httpStreamingSttController = createHttpStreamingSttController({
       inFlight = null;
     });
   },
+  onSpeechStart: (sessionId: string) => {
+    // Barge-in: if the agent is speaking and the user starts talking,
+    // interrupt TTS playback so the VAD can capture the new utterance.
+    const state = getLocalVoiceState();
+    if (state.status === 'speaking' && state.sessionId === sessionId && isVoiceBargeInEnabled(storage.getState().settings)) {
+      playbackController.interrupt();
+    }
+  },
 });
 
 async function startRecording(sessionId: string): Promise<void> {
@@ -212,13 +220,22 @@ async function stopHttpStreamingAndSend(sessionId: string): Promise<void> {
   patchLocalVoiceState({ status: 'transcribing', error: null });
 
   const text = await httpStreamingSttController.stop(sessionId);
+  const isHandsFree = httpStreamingSttController.isHandsFreeSession(sessionId) && isHandsFreeOpenAiCompatSttEnabled(storage.getState().settings);
+
   if (!text) {
-    if (httpStreamingSttController.isHandsFreeSession(sessionId) && isHandsFreeOpenAiCompatSttEnabled(storage.getState().settings)) {
+    if (isHandsFree) {
       await httpStreamingSttController.start(sessionId);
       return;
     }
     patchLocalVoiceState({ status: 'idle', sessionId, error: null });
     return;
+  }
+
+  // In hands-free mode, restart the mic immediately so it listens during
+  // agent processing and TTS playback. This enables barge-in: the VAD's
+  // onSpeechStart callback interrupts TTS when the user starts speaking.
+  if (isHandsFree) {
+    await httpStreamingSttController.start(sessionId);
   }
 
   const settings = storage.getState().settings as any;
@@ -229,10 +246,6 @@ async function stopHttpStreamingAndSend(sessionId: string): Promise<void> {
     playbackController,
     voiceAgentSessions,
   });
-
-  if (httpStreamingSttController.isHandsFreeSession(sessionId) && isHandsFreeOpenAiCompatSttEnabled(storage.getState().settings)) {
-    await httpStreamingSttController.start(sessionId);
-  }
 }
 
 export async function stopLocalVoiceAgent(sessionId: string): Promise<void> {

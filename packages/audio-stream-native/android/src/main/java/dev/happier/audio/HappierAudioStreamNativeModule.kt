@@ -3,6 +3,8 @@ package dev.happier.audio
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.media.audiofx.AcousticEchoCanceler
+import android.media.audiofx.NoiseSuppressor
 import android.util.Base64
 import java.io.ByteArrayOutputStream
 import java.util.UUID
@@ -15,6 +17,8 @@ class HappierAudioStreamNativeModule : Module() {
   private var record: AudioRecord? = null
   private var thread: Thread? = null
   private var stopFlag = AtomicBoolean(false)
+  private var aec: AcousticEchoCanceler? = null
+  private var ns: NoiseSuppressor? = null
 
   override fun definition() = ModuleDefinition {
     Name("HappierAudioStreamNative")
@@ -44,7 +48,7 @@ class HappierAudioStreamNativeModule : Module() {
       val bufferSize = maxOf(minBuffer, frameBytes * 2)
 
       val audioRecord = AudioRecord(
-        MediaRecorder.AudioSource.VOICE_RECOGNITION,
+        MediaRecorder.AudioSource.VOICE_COMMUNICATION,
         sampleRate,
         channelConfig,
         AudioFormat.ENCODING_PCM_16BIT,
@@ -54,6 +58,20 @@ class HappierAudioStreamNativeModule : Module() {
       if (audioRecord.state != AudioRecord.STATE_INITIALIZED) {
         audioRecord.release()
         throw IllegalStateException("audio_record_not_initialized")
+      }
+
+      // Enable acoustic echo cancellation and noise suppression so the mic
+      // doesn't pick up TTS playback from the speaker (barge-in support).
+      val sessionId2 = audioRecord.audioSessionId
+      if (AcousticEchoCanceler.isAvailable()) {
+        try {
+          aec = AcousticEchoCanceler.create(sessionId2)?.apply { enabled = true }
+        } catch (_: Throwable) {}
+      }
+      if (NoiseSuppressor.isAvailable()) {
+        try {
+          ns = NoiseSuppressor.create(sessionId2)?.apply { enabled = true }
+        } catch (_: Throwable) {}
       }
 
       stopFlag.set(false)
@@ -119,6 +137,11 @@ class HappierAudioStreamNativeModule : Module() {
       // ignore
     }
     thread = null
+
+    try { aec?.release() } catch (_: Throwable) {}
+    aec = null
+    try { ns?.release() } catch (_: Throwable) {}
+    ns = null
 
     val audioRecord = record
     record = null

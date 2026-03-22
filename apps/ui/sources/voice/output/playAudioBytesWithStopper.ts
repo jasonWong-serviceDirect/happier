@@ -182,6 +182,7 @@ export async function playAudioBytesWithStopper(opts: {
     };
 
     const stopPlayback = () => {
+      try { player.pause(); } catch { /* ignore */ }
       void cleanup()
         .then(() => safeResolve())
         .catch(() => safeResolve());

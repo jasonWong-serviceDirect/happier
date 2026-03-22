@@ -49,6 +49,7 @@ export function createHttpStreamingSttController(deps: {
   getSettings: () => any;
   canAutoStopTurn?: () => boolean;
   onAutoStopTurn?: (sessionId: string) => void;
+  onSpeechStart?: (sessionId: string) => void;
 }): HttpStreamingSttController {
   let handle: HttpStreamingHandle | null = null;
   let handsFreeSessionId: string | null = null;
@@ -127,6 +128,10 @@ export function createHttpStreamingSttController(deps: {
         }
 
         const vadEvent = handle.vad.pushFrame(pcmBytes);
+
+        if (vadEvent?.kind === 'speech_start') {
+          deps.onSpeechStart?.(sessionId);
+        }
 
         if (vadEvent?.kind === 'speech_end') {
           handle.collectedFrames = vadEvent.frames;
