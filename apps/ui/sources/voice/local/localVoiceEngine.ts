@@ -53,10 +53,13 @@ const sherpaSttController = createSherpaStreamingSttController({
 });
 
 async function startRecording(sessionId: string): Promise<void> {
-  const permission = await requestMicrophonePermission();
-  if (!permission.granted) {
-    showMicrophonePermissionDeniedAlert(permission.canAskAgain);
-    return;
+  // Permission is pre-granted via Android settings.
+  // The Expo requestRecordingPermissionsAsync() call can hang on some builds,
+  // so we skip it and go straight to recording setup.
+  try {
+    await AudioModule.setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true } as any);
+  } catch {
+    // best-effort
   }
 
   const nextRecorder = new AudioModule.AudioRecorder(RecordingPresets.HIGH_QUALITY);
@@ -210,8 +213,7 @@ export function appendLocalVoiceAgentContextUpdate(sessionId: string, update: st
 
 export async function toggleLocalVoiceTurn(sessionId: string): Promise<void> {
   const realtimeStatus = (storage.getState() as any)?.realtimeStatus;
-  if (realtimeStatus === 'connected' || realtimeStatus === 'connecting') {
-    // Avoid audio-session conflicts: local voice should not start while a realtime call is active.
+  if (realtimeStatus === 'connected') {
     return;
   }
 
@@ -226,7 +228,10 @@ export async function toggleLocalVoiceTurn(sessionId: string): Promise<void> {
   }
 
   if (inFlight && !canAttemptBargeIn) {
-    await inFlight;
+    await Promise.race([inFlight, new Promise(resolve => setTimeout(resolve, 5000))]);
+    if (inFlight) {
+      inFlight = null;
+    }
   }
 
   const current = getLocalVoiceState();

@@ -179,7 +179,13 @@ export function VoiceSurface(props: Readonly<{ variant: VoiceSurfaceVariant; ses
 
 	  const onTogglePress = () => {
 	    if (canStop) {
-	      fireAndForget(voiceSessionManager.stop(''), { tag: 'VoiceSurface.stop' });
+	      if (providerId === 'local_conversation' || providerId === 'local_direct') {
+	        // Local voice: always toggle — stops recording & sends to STT, stays connected for next turn.
+	        const currentSessionId = startSessionId ?? '';
+	        fireAndForget(voiceSessionManager.toggle(currentSessionId), { tag: 'VoiceSurface.localToggle' });
+	      } else {
+	        fireAndForget(voiceSessionManager.stop(''), { tag: 'VoiceSurface.stop' });
+	      }
 	      return;
 	    }
 	    const resolvedStartSessionId =
@@ -259,7 +265,7 @@ export function VoiceSurface(props: Readonly<{ variant: VoiceSurfaceVariant; ses
             active={snap.status !== 'disconnected' || providerId !== 'off'}
             accessibilityLabel={canStop ? t('voiceAssistant.tapToEnd') : t('voiceAssistant.label')}
           >
-            {canStop ? (
+            {canStop && (snap.mode === 'listening' || providerId === 'realtime_elevenlabs') ? (
               <Ionicons name="stop-circle" size={22} color={theme.colors.button?.primary?.tint ?? theme.colors.text} />
             ) : (
               <Image

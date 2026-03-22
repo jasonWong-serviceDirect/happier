@@ -811,6 +811,12 @@ export function LocalConversationSection(props: {
           }}
           items={[
             {
+              id: 'yolo',
+              title: 'Full access (YOLO)',
+              subtitle: 'Voice agent can run any tools without confirmation.',
+              icon: <Ionicons name="flash-outline" size={22} color={theme.colors.textSecondary} />,
+            },
+            {
               id: 'read_only',
               title: 'Read-only',
               subtitle: 'Voice agent can see context, but cannot run tools.',
