@@ -179,11 +179,12 @@ export function VoiceSurface(props: Readonly<{ variant: VoiceSurfaceVariant; ses
 
 	  const onTogglePress = () => {
 	    if (canStop) {
-	      if (providerId === 'local_conversation' || providerId === 'local_direct') {
-	        // Local voice: always toggle — stops recording & sends to STT, stays connected for next turn.
+	      if ((providerId === 'local_conversation' || providerId === 'local_direct') && snap.mode === 'listening') {
+	        // Local voice while recording: toggle — stops recording & sends to STT, stays connected for next turn.
 	        const currentSessionId = startSessionId ?? '';
 	        fireAndForget(voiceSessionManager.toggle(currentSessionId), { tag: 'VoiceSurface.localToggle' });
 	      } else {
+	        // Not recording (processing/speaking) or non-local: full stop to abort execution.
 	        fireAndForget(voiceSessionManager.stop(''), { tag: 'VoiceSurface.stop' });
 	      }
 	      return;
