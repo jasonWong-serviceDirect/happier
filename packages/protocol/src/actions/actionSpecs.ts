@@ -668,6 +668,7 @@ export const ACTION_SPECS: readonly ActionSpec[] = Object.freeze([
   {
     id: 'session.spawn_new',
     title: 'Create session',
+    description: 'Create a new session directly without showing a dialog. Resolves the target machine and directory from context or explicit parameters. After creation, confirm the path to the user.',
     safety: 'safe',
     placements: ['command_palette', 'session_info', 'voice_panel'],
     bindings: { voiceClientToolName: 'spawnSession' },
@@ -709,8 +710,8 @@ export const ACTION_SPECS: readonly ActionSpec[] = Object.freeze([
     surfaces: {
       ui_button: false,
       ui_slash_command: false,
-      voice_tool: true,
-      voice_action_block: true,
+      voice_tool: false,
+      voice_action_block: false,
       mcp: false,
       session_control_cli: false,
     },

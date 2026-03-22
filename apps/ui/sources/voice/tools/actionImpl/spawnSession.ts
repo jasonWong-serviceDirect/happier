@@ -118,5 +118,8 @@ export async function spawnSessionForVoiceTool(params: Readonly<{
   const initialMessage = normalizeNonEmptyString(params.initialMessage);
   await postprocessSpawnedSession({ sessionId: spawnedSessionId, tag, initialMessage });
 
+  if (spawned && typeof spawned === 'object' && (spawned as any).type === 'success') {
+    return { ...spawned as any, directory };
+  }
   return spawned;
 }
