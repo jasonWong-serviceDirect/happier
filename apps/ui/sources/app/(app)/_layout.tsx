@@ -795,6 +795,14 @@ export default function RootLayout() {
                 }}
             />
             <Stack.Screen
+                name="voice/index"
+                options={{
+                    presentation: 'transparentModal',
+                    headerShown: false,
+                    animation: 'fade',
+                }}
+            />
+            <Stack.Screen
                 name="zen/new"
                 options={{
                     presentation: 'modal',
