@@ -260,7 +260,7 @@ export function LocalConversationSection(props: {
         popoverBoundaryRef={props.popoverBoundaryRef}
       />
 
-      {sttProvider === 'device' ? (
+      {sttProvider === 'device' || sttProvider === 'local_neural' || sttProvider === 'openai_compat' ? (
         <ItemGroup title="Hands-free">
           <Item
             title="Enable hands-free"

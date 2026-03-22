@@ -39,6 +39,11 @@ export function isHandsFreeLocalNeuralSttEnabled(settings: any): boolean {
   return resolveLocalSttProvider(settings) === 'local_neural' && config?.handsFree?.enabled === true;
 }
 
+export function isHandsFreeOpenAiCompatSttEnabled(settings: any): boolean {
+  const { config } = resolveLocalVoiceAdapterSettings(settings);
+  return resolveLocalSttProvider(settings) === 'openai_compat' && config?.handsFree?.enabled === true;
+}
+
 export function isVoiceBargeInEnabled(settings: any): boolean {
   const { config } = resolveLocalVoiceAdapterSettings(settings);
   return config?.tts?.bargeInEnabled === true;

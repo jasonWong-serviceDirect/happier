@@ -5,6 +5,9 @@ import { getOptionalHappierSherpaNativeModule } from '@happier-dev/sherpa-native
 import { ensureModelPackInstalled } from '@/voice/modelPacks/installer.native';
 import { resolveModelPackManifestUrl } from '@/voice/modelPacks/manifests';
 import { VoiceLocalSttSchema } from '@/sync/domains/settings/voiceLocalSttSettings';
+import { computeTurnEndpointDelayMs, normalizeTurnEndpointPolicy } from '@/voice/input/TurnEndpointDetector';
+import { encodePcm16leFramesToWav } from '@/voice/input/encodePcm16leToWav';
+import { decodeBase64 } from '@/encryption/base64';
 
 type DeviceSttStatePatch = {
   status?: 'idle' | 'recording' | 'transcribing' | 'sending' | 'speaking' | 'error';
@@ -42,6 +45,9 @@ type SherpaSttHandle = {
   pushing: boolean;
   queuedFrames: Array<{ pcm16leBase64: string; sampleRate: number; channels: number }>;
   pushLoop: Promise<void> | null;
+  speechStartedAt: number | null;
+  endpointTimer: ReturnType<typeof setTimeout> | null;
+  collectedFrames: Uint8Array[];
 };
 
 export type SherpaStreamingSttController = Readonly<{
@@ -63,6 +69,9 @@ function getOptionalSherpaNativeModule(): SherpaNativeModuleLike | null {
 export function createSherpaStreamingSttController(deps: {
   setState: (patch: DeviceSttStatePatch) => void;
   getSettings: () => any;
+  canAutoStopTurn?: () => boolean;
+  onAutoStopTurn?: (sessionId: string) => void;
+  transcriber?: (wavArrayBuffer: ArrayBuffer) => Promise<string | null>;
 }): SherpaStreamingSttController {
   let handle: SherpaSttHandle | null = null;
   let handsFreeSessionId: string | null = null;
@@ -76,6 +85,7 @@ export function createSherpaStreamingSttController(deps: {
     const h = handle;
     if (!h) return;
     handle = null;
+    if (h.endpointTimer !== null) clearTimeout(h.endpointTimer);
     try {
       h.abortController.abort();
     } catch {
@@ -198,7 +208,36 @@ export function createSherpaStreamingSttController(deps: {
       const after = handle;
       if (!after || after.sessionId !== sessionId || after.jobId !== jobId) return;
       const text = typeof res?.text === 'string' ? res.text : '';
-      if (text.trim().length > 0) after.transcript = text.trim();
+      if (text.trim().length > 0) {
+        after.transcript = text.trim();
+        if (after.speechStartedAt === null) after.speechStartedAt = Date.now();
+      }
+
+      // VAD auto-stop: when Sherpa signals an endpoint and we have transcript,
+      // schedule auto-stop after the configured silence delay.
+      if (res?.isEndpoint === true && after.transcript.length > 0 && handsFreeSessionId === sessionId) {
+        if (after.endpointTimer !== null) clearTimeout(after.endpointTimer);
+
+        const settings = deps.getSettings();
+        const voice = settings?.voice ?? null;
+        const providerId = voice?.providerId;
+        const adapterCfg =
+          providerId === 'local_direct'
+            ? voice?.adapters?.local_direct
+            : voice?.adapters?.local_conversation ?? voice?.adapters?.local_direct;
+        const rawEndpointing = adapterCfg?.handsFree?.endpointing ?? {};
+        const policy = normalizeTurnEndpointPolicy(rawEndpointing);
+        const elapsed = after.speechStartedAt !== null ? Date.now() - after.speechStartedAt : 0;
+        const delayMs = computeTurnEndpointDelayMs(policy, elapsed);
+
+        after.endpointTimer = setTimeout(() => {
+          const current = handle;
+          if (!current || current.sessionId !== sessionId || current.jobId !== jobId) return;
+          if (current.transcript.trim().length === 0) return;
+          if (deps.canAutoStopTurn && !deps.canAutoStopTurn()) return;
+          deps.onAutoStopTurn?.(sessionId);
+        }, delayMs);
+      }
     };
 
     const startPushLoop = (first: { pcm16leBase64: string; sampleRate: number; channels: number }) => {
@@ -239,6 +278,16 @@ export function createSherpaStreamingSttController(deps: {
           channels: event.channels ?? channels,
         };
 
+        // Accumulate raw PCM frames for external transcription (e.g. Whisper).
+        if (deps.transcriber && handle) {
+          try {
+            const raw = decodeBase64(frame.pcm16leBase64);
+            handle.collectedFrames.push(raw);
+          } catch {
+            // ignore decode errors
+          }
+        }
+
         // Serialize frames into a bounded queue to prevent unbounded concurrent native work.
         if (handle.pushing) {
           handle.queuedFrames.push(frame);
@@ -262,6 +311,9 @@ export function createSherpaStreamingSttController(deps: {
       pushing: false,
       queuedFrames: [],
       pushLoop: null,
+      speechStartedAt: null,
+      endpointTimer: null,
+      collectedFrames: [],
     };
     deps.setState({ status: 'recording', sessionId, error: null });
   };
@@ -269,6 +321,8 @@ export function createSherpaStreamingSttController(deps: {
   const stop = async (sessionId: string): Promise<string> => {
     if (!handle || handle.sessionId !== sessionId) return '';
     const current = handle;
+
+    if (current.endpointTimer !== null) clearTimeout(current.endpointTimer);
 
     try {
       current.subscriptions.forEach((s) => s.remove());
@@ -289,11 +343,38 @@ export function createSherpaStreamingSttController(deps: {
     if (sherpa) {
       try {
         await current.pushLoop?.catch(() => {});
-        const final = await sherpa.finishStreaming({ jobId: current.jobId });
-        const text = typeof final?.text === 'string' ? final.text.trim() : '';
-        if (text) current.transcript = text;
       } catch {
         // ignore
+      }
+
+      // When an external transcriber is provided (e.g. Whisper), encode accumulated
+      // PCM frames to WAV and delegate transcription. Sherpa is used only for
+      // endpoint/VAD detection in this mode.
+      if (deps.transcriber && current.collectedFrames.length > 0) {
+        try {
+          await sherpa.cancel({ jobId: current.jobId });
+        } catch {
+          // ignore
+        }
+        try {
+          const wav = encodePcm16leFramesToWav({
+            frames: current.collectedFrames,
+            sampleRate: 16000,
+            channels: 1,
+          });
+          const text = await deps.transcriber(wav);
+          if (text) current.transcript = text.trim();
+        } catch {
+          // ignore — fall through to Sherpa transcript if available
+        }
+      } else {
+        try {
+          const final = await sherpa.finishStreaming({ jobId: current.jobId });
+          const text = typeof final?.text === 'string' ? final.text.trim() : '';
+          if (text) current.transcript = text;
+        } catch {
+          // ignore
+        }
       }
     }
 

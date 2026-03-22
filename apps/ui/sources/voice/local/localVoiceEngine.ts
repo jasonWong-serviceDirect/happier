@@ -5,6 +5,7 @@ import { fireAndForget } from '@/utils/system/fireAndForget';
 import { storage } from '@/sync/domains/state/storage';
 import { createDeviceSttController } from '@/voice/input/DeviceSttController';
 import { createSherpaStreamingSttController } from '@/voice/input/SherpaStreamingSttController';
+import { createHttpStreamingSttController } from '@/voice/input/HttpStreamingSttController';
 import { MissingGeminiApiKeyError, MissingSttBaseUrlError, transcribeRecordedAudioWithProvider } from '@/voice/input/transcribeRecordedAudioWithProvider';
 import { VOICE_AGENT_GLOBAL_SESSION_ID } from '@/voice/agent/voiceAgentGlobalSessionId';
 import { findVoiceCarrierSessionId } from '@/voice/agent/voiceCarrierSession';
@@ -23,6 +24,7 @@ import {
 import {
   isHandsFreeDeviceSttEnabled,
   isHandsFreeLocalNeuralSttEnabled,
+  isHandsFreeOpenAiCompatSttEnabled,
   isVoiceBargeInEnabled,
   resolveLocalSttProvider,
   resolveLocalVoiceAdapterSettings,
@@ -50,6 +52,24 @@ const deviceSttController = createDeviceSttController({
 const sherpaSttController = createSherpaStreamingSttController({
   setState: patchLocalVoiceState,
   getSettings: () => storage.getState().settings as any,
+  canAutoStopTurn: () => !inFlight,
+  onAutoStopTurn: (sessionId: string) => {
+    if (inFlight) return;
+    inFlight = stopSherpaSpeechRecognitionAndSend(sessionId).finally(() => {
+      inFlight = null;
+    });
+  },
+});
+const httpStreamingSttController = createHttpStreamingSttController({
+  setState: patchLocalVoiceState,
+  getSettings: () => storage.getState().settings as any,
+  canAutoStopTurn: () => !inFlight,
+  onAutoStopTurn: (sessionId: string) => {
+    if (inFlight) return;
+    inFlight = stopHttpStreamingAndSend(sessionId).finally(() => {
+      inFlight = null;
+    });
+  },
 });
 
 async function startRecording(sessionId: string): Promise<void> {
@@ -188,9 +208,37 @@ async function stopSherpaSpeechRecognitionAndSend(sessionId: string): Promise<vo
   }
 }
 
+async function stopHttpStreamingAndSend(sessionId: string): Promise<void> {
+  patchLocalVoiceState({ status: 'transcribing', error: null });
+
+  const text = await httpStreamingSttController.stop(sessionId);
+  if (!text) {
+    if (httpStreamingSttController.isHandsFreeSession(sessionId) && isHandsFreeOpenAiCompatSttEnabled(storage.getState().settings)) {
+      await httpStreamingSttController.start(sessionId);
+      return;
+    }
+    patchLocalVoiceState({ status: 'idle', sessionId, error: null });
+    return;
+  }
+
+  const settings = storage.getState().settings as any;
+  await sendVoiceTextTurnImpl({
+    sessionId,
+    settings,
+    userText: text,
+    playbackController,
+    voiceAgentSessions,
+  });
+
+  if (httpStreamingSttController.isHandsFreeSession(sessionId) && isHandsFreeOpenAiCompatSttEnabled(storage.getState().settings)) {
+    await httpStreamingSttController.start(sessionId);
+  }
+}
+
 export async function stopLocalVoiceAgent(sessionId: string): Promise<void> {
   deviceSttController.clearHandsFreeSession(sessionId);
   sherpaSttController.clearHandsFreeSession(sessionId);
+  httpStreamingSttController.clearHandsFreeSession(sessionId);
   await voiceAgentSessions.stop(sessionId);
 }
 
@@ -286,9 +334,11 @@ export async function toggleLocalVoiceTurn(sessionId: string): Promise<void> {
     const sttProvider = resolveLocalSttProvider(settings);
     const useDeviceStt = sttProvider === 'device';
     const useSherpaStt = sttProvider === 'local_neural';
+    const useHttpStreamingVad = sttProvider === 'openai_compat' && config?.handsFree?.enabled === true;
     deviceSttController.setHandsFreeSession(useDeviceStt && config?.handsFree?.enabled === true ? sessionId : null);
     sherpaSttController.setHandsFreeSession(useSherpaStt && config?.handsFree?.enabled === true ? sessionId : null);
-    inFlight = (useDeviceStt ? deviceSttController.start(sessionId) : useSherpaStt ? sherpaSttController.start(sessionId) : startRecording(sessionId)).finally(() => {
+    httpStreamingSttController.setHandsFreeSession(useHttpStreamingVad ? sessionId : null);
+    inFlight = (useDeviceStt ? deviceSttController.start(sessionId) : useSherpaStt ? sherpaSttController.start(sessionId) : useHttpStreamingVad ? httpStreamingSttController.start(sessionId) : startRecording(sessionId)).finally(() => {
       inFlight = null;
     });
     await inFlight;
@@ -302,9 +352,11 @@ export async function toggleLocalVoiceTurn(sessionId: string): Promise<void> {
     const sttProvider = resolveLocalSttProvider(settings);
     const useDeviceStt = sttProvider === 'device';
     const useSherpaStt = sttProvider === 'local_neural';
+    const useHttpStreamingVad = sttProvider === 'openai_compat' && config?.handsFree?.enabled === true;
     deviceSttController.setHandsFreeSession(useDeviceStt && config?.handsFree?.enabled === true ? sessionId : null);
     sherpaSttController.setHandsFreeSession(useSherpaStt && config?.handsFree?.enabled === true ? sessionId : null);
-    inFlight = (useDeviceStt ? deviceSttController.start(sessionId) : useSherpaStt ? sherpaSttController.start(sessionId) : startRecording(sessionId)).finally(() => {
+    httpStreamingSttController.setHandsFreeSession(useHttpStreamingVad ? sessionId : null);
+    inFlight = (useDeviceStt ? deviceSttController.start(sessionId) : useSherpaStt ? sherpaSttController.start(sessionId) : useHttpStreamingVad ? httpStreamingSttController.start(sessionId) : startRecording(sessionId)).finally(() => {
       inFlight = null;
     });
     await inFlight;
@@ -321,12 +373,19 @@ export async function toggleLocalVoiceTurn(sessionId: string): Promise<void> {
     const sttProvider = resolveLocalSttProvider(settings);
     const useDeviceStt = sttProvider === 'device';
     const useSherpaStt = sttProvider === 'local_neural';
+    const useHttpStreamingVad = sttProvider === 'openai_compat' && config?.handsFree?.enabled === true;
     if (useDeviceStt) {
       deviceSttController.clearHandsFreeSession();
     }
 
     if (useSherpaStt) {
       sherpaSttController.clearHandsFreeSession();
+    }
+
+    if (useHttpStreamingVad) {
+      httpStreamingSttController.clearHandsFreeSession();
+      await stopLocalVoiceSession();
+      return;
     }
 
     inFlight = (useDeviceStt
@@ -374,6 +433,13 @@ export async function stopLocalVoiceSession(): Promise<void> {
     sherpaSttController.clearHandsFreeSession(activeSessionId);
 
     try {
+      await httpStreamingSttController.stop(activeSessionId);
+    } catch {
+      // ignore
+    }
+    httpStreamingSttController.clearHandsFreeSession(activeSessionId);
+
+    try {
       await voiceAgentSessions.stop(activeSessionId);
     } catch {
       // ignore
@@ -381,6 +447,7 @@ export async function stopLocalVoiceSession(): Promise<void> {
   } else {
     deviceSttController.clearHandsFreeSession();
     sherpaSttController.clearHandsFreeSession();
+    httpStreamingSttController.clearHandsFreeSession();
   }
 
   patchLocalVoiceState({ status: 'idle', sessionId: null, error: null });

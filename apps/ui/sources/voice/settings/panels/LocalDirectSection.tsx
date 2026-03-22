@@ -41,7 +41,7 @@ export function LocalDirectSection(props: {
     <>
       <LocalVoiceSttGroup cfgStt={cfg.stt} setStt={(next) => setCfg({ stt: next })} popoverBoundaryRef={props.popoverBoundaryRef} />
 
-      {sttProvider === 'device' ? (
+      {sttProvider === 'device' || sttProvider === 'local_neural' || sttProvider === 'openai_compat' ? (
         <ItemGroup title="Hands-free">
           <Item
             title="Enable hands-free"
