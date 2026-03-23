@@ -64,15 +64,27 @@ const sherpaSttController = createSherpaStreamingSttController({
 const httpStreamingSttController = createHttpStreamingSttController({
   setState: patchLocalVoiceState,
   getSettings: () => storage.getState().settings as any,
-  canAutoStopTurn: () => !inFlight,
+  canAutoStopTurn: () => {
+    if (!inFlight) return true;
+    // Allow VAD auto-stop during TTS playback so deferred barge-in can fire.
+    const state = getLocalVoiceState();
+    return state.status === 'speaking' && isVoiceBargeInEnabled(storage.getState().settings);
+  },
   onAutoStopTurn: (sessionId: string) => {
-    if (inFlight) return;
+    const isSpeakingBargeIn = getLocalVoiceState().status === 'speaking' && inFlight;
+    if (!isSpeakingBargeIn && inFlight) return;
+    if (isSpeakingBargeIn) {
+      // Barge-in: interrupt TTS, then start a new turn. The previous inFlight
+      // (sendVoiceTextTurn) is awaiting speakAssistantText which will resolve
+      // once the playback stopper fires.
+      playbackController.interrupt();
+    }
     inFlight = stopHttpStreamingAndSend(sessionId).finally(() => {
       inFlight = null;
     });
   },
   onSpeechStart: (_sessionId: string) => {
-    // Barge-in is deferred to after STT confirms real speech (see stopHttpStreamingAndSend).
+    // Barge-in is deferred to after STT confirms real speech (see onAutoStopTurn).
     // Interrupting here on energy VAD alone causes false barge-ins from noise that
     // Whisper then hallucinates on.
   },
@@ -299,10 +311,14 @@ export async function toggleLocalVoiceTurn(sessionId: string): Promise<void> {
   }
 
   const initialState = getLocalVoiceState();
+  const isSameVoiceSession =
+    initialState.sessionId === sessionId ||
+    initialState.sessionId === VOICE_AGENT_GLOBAL_SESSION_ID ||
+    sessionId === VOICE_AGENT_GLOBAL_SESSION_ID;
   const canAttemptBargeIn =
-    initialState.status === 'speaking' && initialState.sessionId === sessionId && isVoiceBargeInEnabled(storage.getState().settings);
+    initialState.status === 'speaking' && isSameVoiceSession && isVoiceBargeInEnabled(storage.getState().settings);
   const shouldNoopWhileSpeaking =
-    initialState.status === 'speaking' && initialState.sessionId === sessionId && !isVoiceBargeInEnabled(storage.getState().settings);
+    initialState.status === 'speaking' && isSameVoiceSession && !isVoiceBargeInEnabled(storage.getState().settings);
 
   if (shouldNoopWhileSpeaking) {
     return;
@@ -348,7 +364,11 @@ export async function toggleLocalVoiceTurn(sessionId: string): Promise<void> {
 	  };
 
   if (current.status === 'speaking') {
-    if (current.sessionId !== sessionId) {
+    const isSameVoiceSessionCurrent =
+      current.sessionId === sessionId ||
+      current.sessionId === VOICE_AGENT_GLOBAL_SESSION_ID ||
+      sessionId === VOICE_AGENT_GLOBAL_SESSION_ID;
+    if (!isSameVoiceSessionCurrent) {
       return;
     }
 
