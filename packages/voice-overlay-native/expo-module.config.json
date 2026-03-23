@@ -1,0 +1,7 @@
+{
+  "name": "HappierVoiceOverlayNative",
+  "platforms": ["android"],
+  "android": {
+    "modules": ["dev.happier.voiceoverlay.VoiceOverlayModule"]
+  }
+}

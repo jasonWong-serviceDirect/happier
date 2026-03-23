@@ -1027,12 +1027,12 @@ export const ACTION_SPECS: readonly ActionSpec[] = Object.freeze([
   {
     id: 'nativeSession.list',
     title: 'List native Claude sessions',
-    description: 'List recent Claude Code sessions from the machine that were started outside of Happier. Returns session summaries with project directory and last prompt. Use when the user asks to resume a previous Claude session, see what sessions exist on the machine, or wants to continue a conversation from the terminal.',
+    description: 'List native Claude Code sessions from the machine (started outside Happier). Without a projectDir, returns only a summary of project directories and session counts. With a projectDir (e.g. "/home/jason/happier"), returns actual session details including last prompt and timestamps. Always ask the user which project directory to search, or infer it from context, then pass projectDir to get session details.',
     safety: 'safe',
     placements: ['voice_panel'],
     bindings: { voiceClientToolName: 'listNativeSessions' },
     examples: {
-      voice: { argsExample: '{"limit":5}' },
+      voice: { argsExample: '{"projectDir":"/home/jason/happier","limit":3}' },
     },
     surfaces: {
       ui_button: false,
@@ -1238,6 +1238,23 @@ export const ACTION_SPECS: readonly ActionSpec[] = Object.freeze([
       session_control_cli: false,
     },
     inputSchema: MemoryEnsureUpToDateInputSchema,
+  },
+  {
+    id: 'screen.read',
+    title: 'Read screen content',
+    description: 'Read the content currently visible on the user\'s device screen, including the foreground app, browser URL, and visible text. Only works when the accessibility service is enabled on Android.',
+    safety: 'safe',
+    placements: ['voice_panel'],
+    bindings: { voiceClientToolName: 'readScreen' },
+    surfaces: {
+      ui_button: false,
+      ui_slash_command: false,
+      voice_tool: true,
+      voice_action_block: true,
+      mcp: false,
+      session_control_cli: false,
+    },
+    inputSchema: z.object({}),
   },
 ]);
 

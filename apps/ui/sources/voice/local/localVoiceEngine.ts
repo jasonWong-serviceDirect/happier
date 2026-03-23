@@ -30,6 +30,7 @@ import {
   resolveLocalVoiceAdapterSettings,
 } from './localVoiceSettings';
 import { sendVoiceTextTurn as sendVoiceTextTurnImpl } from './sendVoiceTextTurn';
+import { initOverlayBridge, setOverlayVoiceCallbacks, stopVoiceOverlay, teardownOverlayBridge } from '@/voice/overlay/voiceOverlayBridge';
 
 export type { LocalVoiceState, LocalVoiceStatus } from './localVoiceState';
 export { getLocalVoiceState, useLocalVoiceStatus, subscribeLocalVoiceState } from './localVoiceState';
@@ -79,6 +80,22 @@ const httpStreamingSttController = createHttpStreamingSttController({
     }
   },
 });
+
+// Initialize the overlay bridge so it can receive native-started overlay events (ACTION_ASSIST flow).
+// Use dynamic imports to call voiceSessionManager (the proper high-level API that sets up
+// adapter, backend connection, and session encryption). Direct toggleLocalVoiceTurn() bypasses
+// all of that and causes "Session encryption not found" errors.
+setOverlayVoiceCallbacks({
+  onStart: async () => {
+    const { voiceSessionManager } = await import('@/voice/session/voiceSession');
+    voiceSessionManager.toggle('');
+  },
+  onStop: async () => {
+    const { voiceSessionManager } = await import('@/voice/session/voiceSession');
+    voiceSessionManager.stop('');
+  },
+});
+initOverlayBridge();
 
 async function startRecording(sessionId: string): Promise<void> {
   // Permission is pre-granted via Android settings.
@@ -256,6 +273,7 @@ export async function stopLocalVoiceAgent(sessionId: string): Promise<void> {
 }
 
 export async function resetLocalVoiceAgentPersistence(): Promise<void> {
+  teardownOverlayBridge();
   await stopLocalVoiceAgent(VOICE_AGENT_GLOBAL_SESSION_ID);
   voiceActivityController.clearSession(VOICE_AGENT_GLOBAL_SESSION_ID);
   const carrierSessionId = findVoiceCarrierSessionId(storage.getState() as any);
@@ -463,5 +481,6 @@ export async function stopLocalVoiceSession(): Promise<void> {
     httpStreamingSttController.clearHandsFreeSession();
   }
 
+  stopVoiceOverlay();
   patchLocalVoiceState({ status: 'idle', sessionId: null, error: null });
 }

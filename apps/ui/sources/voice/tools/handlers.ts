@@ -7,6 +7,7 @@ import { trackPermissionResponse } from '@/track';
 import { voiceActivityController } from '@/voice/activity/voiceActivityController';
 import { createDefaultActionExecutor } from '@/sync/ops/actions/defaultActionExecutor';
 import { getActiveServerSnapshot } from '@/sync/domains/server/serverRuntime';
+import { readScreenForVoiceTool } from './actionImpl/readScreen';
 
 function normalizeId(raw: unknown): string {
   return String(raw ?? '').trim();
@@ -222,6 +223,7 @@ export function createVoiceToolHandlers(
   // Voice surface overrides (extra UX behavior).
   handlers.sendSessionMessage = sendSessionMessage;
   handlers.processPermissionRequest = processPermissionRequest;
+  handlers.readScreen = async () => readScreenForVoiceTool();
 
   return Object.freeze(handlers);
 }

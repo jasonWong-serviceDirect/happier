@@ -43,6 +43,9 @@ export const ACTION_IDS = [
   'memory.search',
   'memory.get_window',
   'memory.ensure_up_to_date',
+
+  // Screen reading (accessibility service)
+  'screen.read',
 ] as const;
 
 export const ActionIdSchema = z.enum(ACTION_IDS);

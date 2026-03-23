@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">Allows the voice assistant to read screen content such as URLs and text from the current app.</string>
+</resources>

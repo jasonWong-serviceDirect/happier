@@ -9,6 +9,8 @@ import { Text } from '@/components/ui/text/Text';
 import { VoiceBars } from '@/components/ui/status/VoiceBars';
 import { useVoiceSessionSnapshot, voiceSessionManager } from '@/voice/session/voiceSession';
 import { fireAndForget } from '@/utils/system/fireAndForget';
+import { getOptionalVoiceOverlayModule } from '@happier-dev/voice-overlay-native';
+import { subscribeLocalVoiceState, getLocalVoiceState } from '@/voice/local/localVoiceState';
 
 export default memo(function VoiceOverlayScreen() {
   const { theme } = useUnistyles();
@@ -26,6 +28,25 @@ export default memo(function VoiceOverlayScreen() {
   React.useEffect(() => {
     return () => {
       fireAndForget(voiceSessionManager.stop(''), { tag: 'VoiceOverlay.autoStop' });
+      // Stop the native overlay service if running
+      getOptionalVoiceOverlayModule()?.stopOverlay();
+    };
+  }, []);
+
+  // Forward voice state to the native overlay widget (if running).
+  React.useEffect(() => {
+    const mod = getOptionalVoiceOverlayModule();
+    if (!mod) return;
+    const unsub = subscribeLocalVoiceState(() => {
+      mod.updateStatus(getLocalVoiceState().status);
+    });
+    // Also subscribe to dismiss from the native overlay
+    const dismissSub = mod.addListener('overlayDismissed', () => {
+      dismiss();
+    });
+    return () => {
+      unsub();
+      dismissSub.remove();
     };
   }, []);
 
