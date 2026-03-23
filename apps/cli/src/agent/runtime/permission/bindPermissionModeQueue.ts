@@ -33,8 +33,17 @@ export function registerPermissionModeMessageQueueBinding(opts: {
   getCurrentPermissionMode: () => PermissionMode | undefined;
   setCurrentPermissionMode: (mode: PermissionMode | undefined) => void;
   inFlightSteer?: InFlightSteerController | null;
+  /**
+   * Optional async function that expands `/commandName args` into the full
+   * prompt from a `.claude/commands/*.md` file. When provided, messages that
+   * match a command file are expanded before being pushed to the queue, and
+   * are never sent through the in-flight steer path (a slash command is a new
+   * instruction, not a steering correction).
+   */
+  expandSlashCommand?: (text: string) => Promise<string | null>;
 }): void {
   let steerSequence: Promise<void> = Promise.resolve();
+  let expansionSequence: Promise<void> = Promise.resolve();
 
   opts.session.onUserMessage((message) => {
     const previousPermissionMode = opts.getCurrentPermissionMode();
@@ -51,6 +60,25 @@ export function registerPermissionModeMessageQueueBinding(opts: {
     const text = message.content.text;
     const special = parseSpecialCommand(text);
     const didChangePermissionMode = previousPermissionMode !== resolvedMode.currentPermissionMode;
+    const mode = { permissionMode: resolvedMode.queuePermissionMode };
+
+    // Slash command expansion: if the message starts with `/` and matches a
+    // `.claude/commands/*.md` file, expand it and push the expanded text.
+    // This bypasses the steer path — expanded commands always start a new turn.
+    if (opts.expandSlashCommand && text.trimStart().startsWith('/')) {
+      const expandFn = opts.expandSlashCommand;
+      expansionSequence = expansionSequence.then(async () => {
+        let finalText = text;
+        try {
+          const expanded = await expandFn(text);
+          if (expanded !== null) finalText = expanded;
+        } catch {
+          // Expansion failed — fall through with original text.
+        }
+        pushTextToMessageQueueWithSpecialCommands({ queue: opts.queue, text: finalText, mode });
+      });
+      return;
+    }
 
     // In-flight steer is only valid when:
     // - the runtime is currently processing a turn,
@@ -71,11 +99,7 @@ export function registerPermissionModeMessageQueueBinding(opts: {
           return;
         } catch {
           try {
-            pushTextToMessageQueueWithSpecialCommands({
-              queue: opts.queue,
-              text,
-              mode: { permissionMode: resolvedMode.queuePermissionMode },
-            });
+            pushTextToMessageQueueWithSpecialCommands({ queue: opts.queue, text, mode });
           } catch {
             // Best-effort fallback: queueing should not be able to crash the process if a steer fails.
           }
@@ -84,10 +108,6 @@ export function registerPermissionModeMessageQueueBinding(opts: {
       return;
     }
 
-    pushTextToMessageQueueWithSpecialCommands({
-      queue: opts.queue,
-      text,
-      mode: { permissionMode: resolvedMode.queuePermissionMode },
-    });
+    pushTextToMessageQueueWithSpecialCommands({ queue: opts.queue, text, mode });
   });
 }

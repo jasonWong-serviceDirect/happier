@@ -4,6 +4,7 @@ import { MessageQueue2 } from '@/agent/runtime/modeMessageQueue';
 import { hashObject } from '@/utils/deterministicJson';
 import { registerPermissionModeMessageQueueBinding, type InFlightSteerController } from '@/agent/runtime/permission/bindPermissionModeQueue';
 import { readPermissionModeUpdatedAtFromMetadataSnapshot } from '@/agent/runtime/permission/permissionModeStateSync';
+import { expandSlashCommand } from '@/agent/runtime/slashCommandExpansion';
 
 export function createPermissionModeQueueState(opts: {
   session: ApiSessionClient;
@@ -41,6 +42,7 @@ export function createPermissionModeQueueState(opts: {
       currentPermissionMode = mode;
     },
     inFlightSteer: opts.inFlightSteer ?? null,
+    expandSlashCommand,
   });
 
   return {

@@ -12,6 +12,7 @@ import { MessageQueue2 } from '@/agent/runtime/modeMessageQueue';
 import { startCaffeinate, stopCaffeinate } from '@/integrations/caffeinate';
 import { extractSDKMetadataAsync } from '@/backends/claude/sdk/metadataExtractor';
 import { parseSpecialCommand } from '@/cli/parsers/specialCommands';
+import { expandSlashCommand } from '@/agent/runtime/slashCommandExpansion';
 import { getEnvironmentInfo } from '@/ui/doctor';
 import { configuration } from '@/configuration';
 import { initialMachineMetadata } from '@/daemon/startDaemon';
@@ -729,8 +730,19 @@ export async function runClaude(credentials: Credentials, options: StartOptions 
             disallowedTools: messageDisallowedTools,
             ...currentClaudeRemoteMetaState,
         };
-        messageQueue.push(message.content.text, enhancedMode);
-        logger.debugLargeJson('User message pushed to queue:', message)
+
+        const text = message.content.text;
+        if (text.trimStart().startsWith('/')) {
+            void expandSlashCommand(text).then((expanded) => {
+                messageQueue.push(expanded ?? text, enhancedMode);
+                logger.debug(`[loop] Slash command ${expanded ? 'expanded' : 'passed through'}: ${text.slice(0, 40)}`);
+            }).catch(() => {
+                messageQueue.push(text, enhancedMode);
+            });
+        } else {
+            messageQueue.push(text, enhancedMode);
+            logger.debugLargeJson('User message pushed to queue:', message);
+        }
     });
 
     // Setup signal handlers for graceful shutdown and crash reporting.
@@ -1260,7 +1272,17 @@ async function runClaudeLocalFastStart(credentials: Credentials, options: StartO
                         disallowedTools: messageDisallowedTools,
                         ...currentClaudeRemoteMetaState,
                     };
-                    messageQueue.push(message.content.text, enhancedMode);
+
+                    const text = message.content.text;
+                    if (text.trimStart().startsWith('/')) {
+                        void expandSlashCommand(text).then((expanded) => {
+                            messageQueue.push(expanded ?? text, enhancedMode);
+                        }).catch(() => {
+                            messageQueue.push(text, enhancedMode);
+                        });
+                    } else {
+                        messageQueue.push(text, enhancedMode);
+                    }
                 });
 
                 if (timing.enabled) {
