@@ -154,6 +154,16 @@ export function normalizeRawMessage(
         return /^\s*<task-notification>/i.test(raw);
     };
 
+    const isClaudeLocalCommandText = (text: string): boolean => {
+        const raw = String(text ?? '');
+        // Claude Code wraps built-in CLI command output in XML-like tags. These are internal CLI
+        // artifacts that should not appear as chat messages in the mobile app.
+        // Covers: <local-command-caveat>, <local-command-stdout>, <command-name>, <command-message>,
+        // <command-args>, and "Unknown skill: ..." error lines.
+        return /^\s*<(local-command-caveat|local-command-stdout|command-name|command-message|command-args)\b/i.test(raw)
+            || /^\s*Unknown skill:/i.test(raw);
+    };
+
     const maybeParseJsonString = (value: unknown): unknown => {
         if (typeof value !== 'string') return value;
         const trimmed = value.trim();
@@ -168,6 +178,9 @@ export function normalizeRawMessage(
     };
 
     if (raw.role === 'user') {
+        if (raw.content.type === 'text' && isClaudeLocalCommandText(raw.content.text)) {
+            return null;
+        }
         return {
             id,
             ...(seq !== undefined ? { seq } : {}),
@@ -318,6 +331,9 @@ export function normalizeRawMessage(
                 // Handle regular user messages
                 if (raw.content.data.message && typeof raw.content.data.message.content === 'string') {
                     if (isClaudeTaskNotificationText(raw.content.data.message.content)) {
+                        return null;
+                    }
+                    if (isClaudeLocalCommandText(raw.content.data.message.content)) {
                         return null;
                     }
                     return {
