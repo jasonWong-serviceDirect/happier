@@ -71,13 +71,10 @@ const httpStreamingSttController = createHttpStreamingSttController({
       inFlight = null;
     });
   },
-  onSpeechStart: (sessionId: string) => {
-    // Barge-in: if the agent is speaking and the user starts talking,
-    // interrupt TTS playback so the VAD can capture the new utterance.
-    const state = getLocalVoiceState();
-    if (state.status === 'speaking' && state.sessionId === sessionId && isVoiceBargeInEnabled(storage.getState().settings)) {
-      playbackController.interrupt();
-    }
+  onSpeechStart: (_sessionId: string) => {
+    // Barge-in is deferred to after STT confirms real speech (see stopHttpStreamingAndSend).
+    // Interrupting here on energy VAD alone causes false barge-ins from noise that
+    // Whisper then hallucinates on.
   },
 });
 
@@ -248,9 +245,14 @@ async function stopHttpStreamingAndSend(sessionId: string): Promise<void> {
     return;
   }
 
+  // Deferred barge-in: now that STT confirmed real speech (passed hallucination filter),
+  // interrupt any ongoing TTS playback before sending the user's turn.
+  if (isVoiceBargeInEnabled(storage.getState().settings)) {
+    playbackController.interrupt();
+  }
+
   // In hands-free mode, restart the mic immediately so it listens during
-  // agent processing and TTS playback. This enables barge-in: the VAD's
-  // onSpeechStart callback interrupts TTS when the user starts speaking.
+  // agent processing and TTS playback.
   if (isHandsFree) {
     await httpStreamingSttController.start(sessionId);
   }
