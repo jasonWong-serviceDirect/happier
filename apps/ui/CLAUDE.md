@@ -605,3 +605,68 @@ const MyComponent = () => {
 - Always wrap pages in memo
 - For hotkeys use "useGlobalKeyboard", do not change it, it works only on Web
 - Use "AsyncLock" class for exclusive async locks
+
+## Local Android Build (Self-Hosted Server)
+
+Build and deploy a release APK for Jason's self-hosted Happier server on Android (Pixel).
+
+### Prerequisites
+- Node modules installed (`yarn install` from monorepo root)
+- ADB connected to device (`adb devices`)
+- Caddy reverse proxy running in Docker (`caddy-happier` container)
+
+### Full Build Steps
+
+```bash
+cd apps/ui
+
+# 1. Prebuild — generates android/ directory (only needed once or after native changes)
+APP_ENV=preview npx expo prebuild --platform android
+
+# 2. Post-prebuild setup (repeat after every prebuild — android/ is gitignored and regenerated)
+
+# 2a. Bundle Caddy root CA for TLS trust
+mkdir -p android/app/src/main/res/raw android/app/src/main/res/xml
+docker exec caddy-happier cat /data/caddy/pki/authorities/local/root.crt \
+  > android/app/src/main/res/raw/caddy_root.pem
+
+# 2b. Create network security config
+cat > android/app/src/main/res/xml/network_security_config.xml << 'XMLEOF'
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config>
+        <domain includeSubdomains="false">100.94.82.56</domain>
+        <trust-anchors>
+            <certificates src="@raw/caddy_root"/>
+            <certificates src="system"/>
+        </trust-anchors>
+    </domain-config>
+</network-security-config>
+XMLEOF
+
+# 2c. Patch AndroidManifest.xml — add to the <application> tag:
+#   android:networkSecurityConfig="@xml/network_security_config"
+#   android:largeHeap="true"
+
+# 3. Build release APK
+EXPO_PUBLIC_HAPPY_SERVER_URL=https://100.94.82.56 APP_ENV=preview \
+  ./android/gradlew -p android :app:assembleRelease \
+  -x lint -x lintVitalRelease -x lintVitalAnalyzeRelease -x test \
+  --configure-on-demand --build-cache -PreactNativeArchitectures=arm64-v8a
+
+# 4. Install on device
+adb install -r android/app/build/outputs/apk/release/app-release.apk
+
+# 5. Force restart
+adb shell am force-stop dev.happier.app.preview
+adb shell monkey -p dev.happier.app.preview -c android.intent.category.LAUNCHER 1
+```
+
+### Key Details
+- `APP_ENV=preview` → applicationId = `dev.happier.app.preview`
+- `EXPO_PUBLIC_HAPPY_SERVER_URL` is baked into the JS bundle at build time
+- `-PreactNativeArchitectures=arm64-v8a` builds only ARM64 (Pixel), much faster
+- The Caddy root CA (valid until 2036) is required — without it HTTPS to the self-signed server fails
+- Steps 2a-2c are lost every prebuild since `android/` is regenerated
+- Server: port 443 (main), 8443 (Whisper STT), 8444 (TTS)
+- For Metro dev server: `sudo sysctl fs.inotify.max_user_watches=524288`
