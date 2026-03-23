@@ -723,7 +723,7 @@ ss -tlnp sport = :8444  # TTS
 
 ### Voice App Settings
 - STT base URL: `https://100.94.82.56:8443`
-- STT model: `Systran/faster-whisper-small`
+- STT model: `deepdml/faster-whisper-large-v3-turbo-ct2`
 - TTS base URL: `https://100.94.82.56:8444`
 
 ### Startup Order
