@@ -8,6 +8,7 @@ import { VoiceLocalSttSchema } from '@/sync/domains/settings/voiceLocalSttSettin
 import { computeTurnEndpointDelayMs, normalizeTurnEndpointPolicy } from '@/voice/input/TurnEndpointDetector';
 import { encodePcm16leFramesToWav } from '@/voice/input/encodePcm16leToWav';
 import { decodeBase64 } from '@/encryption/base64';
+import { filterWhisperHallucination } from '@/voice/input/whisperHallucinationFilter';
 
 type DeviceSttStatePatch = {
   status?: 'idle' | 'recording' | 'transcribing' | 'sending' | 'speaking' | 'error';
@@ -362,8 +363,9 @@ export function createSherpaStreamingSttController(deps: {
             sampleRate: 16000,
             channels: 1,
           });
-          const text = await deps.transcriber(wav);
-          if (text) current.transcript = text.trim();
+          const raw = await deps.transcriber(wav);
+          const text = filterWhisperHallucination(raw);
+          if (text) current.transcript = text;
         } catch {
           // ignore — fall through to Sherpa transcript if available
         }

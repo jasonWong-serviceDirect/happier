@@ -53,6 +53,7 @@ export function buildOpenAiTranscriptionRequest(opts: {
   apiKey: string | null;
   model: string;
   language?: string | null;
+  temperature?: number;
   file: OpenAiCompatibleFile;
 }): { url: string; init: RequestInit } {
   const baseV1 = normalizeOpenAiCompatibleBaseUrl(opts.baseUrl);
@@ -72,6 +73,7 @@ export function buildOpenAiTranscriptionRequest(opts: {
     form.append('file', { uri: opts.file.uri, name: opts.file.name, type: opts.file.mimeType } as any);
   }
   form.append('model', opts.model);
+  form.append('temperature', String(opts.temperature ?? 0));
   if (opts.language) {
     form.append('language', opts.language);
   }

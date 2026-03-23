@@ -4,6 +4,7 @@ import { sync } from '@/sync/sync';
 import { runtimeFetch } from '@/utils/system/runtimeFetch';
 import { fetchWithTimeout, resolveVoiceNetworkTimeoutMs } from '@/voice/runtime/fetchWithTimeout';
 import { buildOpenAiTranscriptionRequest } from '@/voice/local/openaiCompat';
+import { filterWhisperHallucination } from '@/voice/input/whisperHallucinationFilter';
 import { RecordingPresets } from 'expo-audio';
 import { getActiveServerSnapshot } from '@/sync/domains/server/serverRuntime';
 
@@ -49,6 +50,7 @@ export async function transcribeRecordedAudioWithHttpStt(params: {
 	        baseUrl: sttBaseUrl,
 	        apiKey: sttApiKey,
 	        model: sttModel,
+	        temperature: 0,
 	        file: { kind: 'web', blob, name: fileName.replace(/\.m4a$/i, '.webm') },
 	      });
 	    }
@@ -56,6 +58,7 @@ export async function transcribeRecordedAudioWithHttpStt(params: {
       baseUrl: sttBaseUrl,
       apiKey: sttApiKey,
       model: sttModel,
+      temperature: 0,
       file: { kind: 'native', uri, name: fileName, mimeType: guessMimeType(fileName) },
     });
   })();
@@ -66,8 +69,8 @@ export async function transcribeRecordedAudioWithHttpStt(params: {
   }
 
   const json = await response.json().catch(() => null);
-  const text = json && typeof json.text === 'string' ? json.text.trim() : '';
-  return text || null;
+  const raw = json && typeof json.text === 'string' ? json.text.trim() : '';
+  return filterWhisperHallucination(raw);
 }
 
 function guessMimeType(uri: string): string {
