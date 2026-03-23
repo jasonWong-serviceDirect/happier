@@ -383,13 +383,13 @@ export function createVoiceAgentSessionController(): VoiceAgentSessionController
       const streamingCfg = voiceCfg?.streaming ?? {};
 
       const defaults = voiceSettingsDefaults.adapters.local_conversation.streaming;
-      const defaultTimeoutMs = voiceSettingsDefaults.adapters.local_conversation.networkTimeoutMs;
+      const defaultAgentTurnTimeoutMs = voiceSettingsDefaults.adapters.local_conversation.agentTurnTimeoutMs;
 
-      const networkTimeoutMsRaw = voiceCfg?.networkTimeoutMs;
-      const networkTimeoutMs =
-        typeof networkTimeoutMsRaw === 'number' && Number.isFinite(networkTimeoutMsRaw) && networkTimeoutMsRaw > 0
-          ? Math.max(1000, Math.min(60000, Math.floor(networkTimeoutMsRaw)))
-          : defaultTimeoutMs;
+      const agentTurnTimeoutMsRaw = voiceCfg?.agentTurnTimeoutMs;
+      const agentTurnTimeoutMs =
+        typeof agentTurnTimeoutMsRaw === 'number' && Number.isFinite(agentTurnTimeoutMsRaw) && agentTurnTimeoutMsRaw > 0
+          ? Math.max(5000, Math.min(300000, Math.floor(agentTurnTimeoutMsRaw)))
+          : defaultAgentTurnTimeoutMs;
 
       const pollIntervalMsRaw = streamingCfg?.turnReadPollIntervalMs;
       const pollIntervalMs =
@@ -406,8 +406,8 @@ export function createVoiceAgentSessionController(): VoiceAgentSessionController
       const streamTimeoutMsRaw = streamingCfg?.turnStreamTimeoutMs;
       const streamTimeoutMs =
         typeof streamTimeoutMsRaw === 'number' && Number.isFinite(streamTimeoutMsRaw) && streamTimeoutMsRaw > 0
-          ? Math.max(1000, Math.min(60000, Math.floor(streamTimeoutMsRaw)))
-          : networkTimeoutMs;
+          ? Math.max(1000, Math.min(300000, Math.floor(streamTimeoutMsRaw)))
+          : agentTurnTimeoutMs;
 
       return {
         pollIntervalMs,
@@ -523,10 +523,17 @@ export function createVoiceAgentSessionController(): VoiceAgentSessionController
         }
       }
 
+      const voiceCfg = (storage.getState().settings as any)?.voice?.adapters?.local_conversation ?? {};
+      const agentTurnTimeoutMsRaw = voiceCfg?.agentTurnTimeoutMs;
+      const turnTimeoutMs =
+        typeof agentTurnTimeoutMsRaw === 'number' && Number.isFinite(agentTurnTimeoutMsRaw) && agentTurnTimeoutMsRaw > 0
+          ? Math.max(5000, Math.min(300000, Math.floor(agentTurnTimeoutMsRaw)))
+          : voiceSettingsDefaults.adapters.local_conversation.agentTurnTimeoutMs;
       const response = await handle.client.sendTurn({
         sessionId: handle.rpcSessionId,
         voiceAgentId: handle.voiceAgentId,
         userText: nextUserText,
+        timeoutMs: turnTimeoutMs,
       });
       return {
         assistantText: response.assistantText,

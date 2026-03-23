@@ -61,7 +61,7 @@ export type VoiceAgentTurnStreamEvent =
 export interface VoiceAgentClient {
   start(params: VoiceAgentStartParams): Promise<VoiceAgentStartResult>;
   sendTurn(
-    params: Readonly<{ sessionId: string; voiceAgentId: string; userText: string }>,
+    params: Readonly<{ sessionId: string; voiceAgentId: string; userText: string; timeoutMs?: number }>,
   ): Promise<{ assistantText: string; actions?: VoiceAssistantAction[] }>;
   welcome(
     params: Readonly<{ sessionId: string; voiceAgentId: string; welcomeText?: string }>,

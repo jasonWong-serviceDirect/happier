@@ -81,6 +81,7 @@ const VoiceLocalConversationSchema = z.object({
   stt: VoiceLocalSttSchema.prefault({}),
   tts: VoiceLocalTtsSchema.prefault({}),
   networkTimeoutMs: z.number().int().min(1000).max(60000).default(15000),
+  agentTurnTimeoutMs: z.number().int().min(5000).max(300000).default(45000),
   handsFree: z
     .object({
       enabled: z.boolean().default(false),
@@ -181,8 +182,8 @@ const VoiceLocalConversationSchema = z.object({
 	      // Turn streaming (daemon voice agent) read loop tuning. Defaults preserve current behavior.
 	      turnReadPollIntervalMs: z.number().int().min(10).max(500).default(25),
       turnReadMaxEvents: z.number().int().min(1).max(256).default(64),
-      // Total budget for a single streamed turn. When null, fallback to adapter networkTimeoutMs.
-      turnStreamTimeoutMs: z.number().int().min(1000).max(60000).nullable().default(null),
+      // Total budget for a single streamed turn. When null, fallback to adapter agentTurnTimeoutMs.
+      turnStreamTimeoutMs: z.number().int().min(5000).max(300000).nullable().default(null),
     })
     .default({
       enabled: false,

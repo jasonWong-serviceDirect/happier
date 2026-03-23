@@ -1188,7 +1188,7 @@ export function LocalConversationSection(props: {
           detail={String(cfg.networkTimeoutMs)}
           onPress={() => {
             fireAndForget((async () => {
-              const raw = await Modal.prompt('Network timeout (ms)', 'Timeout for requests to your endpoints (1000–60000).', {
+              const raw = await Modal.prompt('Network timeout (ms)', 'Timeout for STT/TTS requests to your endpoints (1000–60000).', {
                 inputType: 'numeric',
                 placeholder: String(cfg.networkTimeoutMs),
               });
@@ -1197,6 +1197,22 @@ export function LocalConversationSection(props: {
               if (!Number.isFinite(next)) return;
               setCfg({ networkTimeoutMs: Math.max(1000, Math.min(60000, Math.floor(next))) });
             })(), { tag: 'LocalConversationSection.prompt.networkTimeoutMs' });
+          }}
+        />
+        <Item
+          title="Agent turn timeout (ms)"
+          detail={String(cfg.agentTurnTimeoutMs)}
+          onPress={() => {
+            fireAndForget((async () => {
+              const raw = await Modal.prompt('Agent turn timeout (ms)', 'How long to wait for the voice agent to respond before timing out (5000–300000).', {
+                inputType: 'numeric',
+                placeholder: String(cfg.agentTurnTimeoutMs),
+              });
+              if (raw === null) return;
+              const next = Number(String(raw).trim());
+              if (!Number.isFinite(next)) return;
+              setCfg({ agentTurnTimeoutMs: Math.max(5000, Math.min(300000, Math.floor(next))) });
+            })(), { tag: 'LocalConversationSection.prompt.agentTurnTimeoutMs' });
           }}
         />
       </ItemGroup>

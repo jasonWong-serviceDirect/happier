@@ -71,12 +71,12 @@ export class DaemonVoiceAgentClient implements VoiceAgentClient {
   }
 
   async sendTurn(
-    params: Readonly<{ sessionId: string; voiceAgentId: string; userText: string }>,
+    params: Readonly<{ sessionId: string; voiceAgentId: string; userText: string; timeoutMs?: number }>,
   ): Promise<{ assistantText: string; actions?: VoiceAssistantAction[] }> {
     const started = await this.startTurnStream({ sessionId: params.sessionId, voiceAgentId: params.voiceAgentId, userText: params.userText });
     let cursor = 0;
     const startedAt = Date.now();
-    const timeoutMs = 30_000;
+    const timeoutMs = params.timeoutMs ?? 45_000;
     const pollMs = 25;
     let merged = '';
 

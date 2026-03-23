@@ -80,7 +80,7 @@ describe('voiceSettings', () => {
   it('defaults include local STT provider selection', () => {
     const stt = (voiceSettingsDefaults as any).adapters?.local_direct?.stt;
     expect(stt?.provider).toBe('openai_compat');
-    expect(stt?.openaiCompat?.model).toBe('whisper-1');
+    expect(stt?.openaiCompat?.model).toBe('deepdml/faster-whisper-large-v3-turbo-ct2');
     expect(stt?.localNeural?.assetId).toBe('sherpa-onnx-streaming-zipformer-en-20M-2023-02-17');
   });
 
