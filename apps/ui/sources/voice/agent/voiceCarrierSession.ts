@@ -251,6 +251,25 @@ export async function ensureVoiceCarrierSessionId(): Promise<string> {
   return await ensurePromise;
 }
 
+/**
+ * Retire a stale carrier session and spawn a fresh one.
+ * Used when the daemon restarts and the old carrier session's RPC handlers no longer exist.
+ */
+export async function retireAndRespawnVoiceCarrierSession(staleSessionId: string): Promise<string | null> {
+  try {
+    await retireVoiceCarrierSession(staleSessionId);
+  } catch {
+    // best-effort retire
+  }
+  // Clear the cached promise so ensureVoiceCarrierSessionId spawns fresh
+  ensurePromise = null;
+  try {
+    return await ensureVoiceCarrierSessionForVoiceHome();
+  } catch {
+    return null;
+  }
+}
+
 export async function ensureVoiceCarrierSessionForSessionRoot(params: Readonly<{ sessionId: string }>): Promise<string> {
   const sessionId = normalizeNonEmptyString(params.sessionId);
   if (!sessionId) throw new Error('voice_carrier_session_target_missing');

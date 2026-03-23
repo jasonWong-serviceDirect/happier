@@ -303,6 +303,22 @@ export function createVoiceAgentSessionController(): VoiceAgentSessionController
         if (requestedBackend !== 'daemon') throw error;
         if (!shouldFallbackFromDaemon(error)) throw error;
 
+        // The carrier session may be stale (daemon restarted, session no longer exists).
+        // Retire it and spawn a fresh one before falling back to openai_compat.
+        if (backend === 'daemon' && isGlobalVoiceAgent && daemonCarrierSessionId) {
+          try {
+            const { retireAndRespawnVoiceCarrierSession } = await import('@/voice/agent/voiceCarrierSession');
+            const freshSessionId = await retireAndRespawnVoiceCarrierSession(daemonCarrierSessionId);
+            if (freshSessionId) {
+              daemonCarrierSessionId = freshSessionId;
+              rpcSessionId = freshSessionId;
+              return await startOnce({ existingRunId: null, resumeWhenInactive: false, resumeHandle: null });
+            }
+          } catch {
+            // Fall through to openai_compat fallback
+          }
+        }
+
         const baseUrl = String(agentCfg?.openaiCompat?.chatBaseUrl ?? '').trim();
         if (!baseUrl) throw error;
 
