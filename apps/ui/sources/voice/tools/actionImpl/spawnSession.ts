@@ -1,4 +1,5 @@
 import { machineSpawnNewSession } from '@/sync/ops/machines';
+import { machineNativeSessionTranscript, convertTranscriptToNormalizedMessages } from '@/sync/ops/machineNativeSessions';
 import { storage } from '@/sync/domains/state/storage';
 import { getActiveServerSnapshot } from '@/sync/domains/server/serverRuntime';
 import { useVoiceTargetStore } from '@/voice/runtime/voiceTargetStore';
@@ -119,6 +120,24 @@ export async function spawnSessionForVoiceTool(params: Readonly<{
   const tag = normalizeNonEmptyString(params.tag);
   const initialMessage = normalizeNonEmptyString(params.initialMessage);
   await postprocessSpawnedSession({ sessionId: spawnedSessionId, tag, initialMessage });
+
+  // Inject pre-resume transcript history into the session message store
+  const resumeId = normalizeNonEmptyString(params.resume);
+  if (spawnedSessionId && resumeId) {
+    try {
+      const transcript = await machineNativeSessionTranscript(
+        machineId,
+        { sessionId: resumeId, limit: 100 },
+        { serverId },
+      );
+      if (transcript.ok && transcript.messages.length > 0) {
+        const normalized = convertTranscriptToNormalizedMessages(resumeId, transcript.messages);
+        storage.getState().applyMessages(spawnedSessionId, normalized);
+      }
+    } catch {
+      // Best-effort
+    }
+  }
 
   if (spawned && typeof spawned === 'object' && (spawned as any).type === 'success') {
     return { ...spawned as any, directory };
