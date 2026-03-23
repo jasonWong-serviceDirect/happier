@@ -3,11 +3,49 @@ import { describe, expect, it } from 'vitest';
 import { chooseSubmitMode } from './submitMode';
 
 describe('chooseSubmitMode', () => {
-    it('preserves interrupt mode', () => {
+    it('uses interrupt when agent is busy and reachable', () => {
         expect(chooseSubmitMode({
             configuredMode: 'interrupt',
-            session: { metadata: {} } as any,
+            session: {
+                thinking: true,
+                presence: 'online',
+                agentStateVersion: 1,
+                agentState: { controlledByUser: false },
+                pendingVersion: 0,
+                pendingCount: 0,
+                metadata: {},
+            } as any,
         })).toBe('interrupt');
+    });
+
+    it('uses agent_queue for interrupt mode when agent is idle (avoids spurious abort)', () => {
+        expect(chooseSubmitMode({
+            configuredMode: 'interrupt',
+            session: {
+                thinking: false,
+                presence: 'online',
+                agentStateVersion: 1,
+                agentState: { controlledByUser: false },
+                pendingVersion: 0,
+                pendingCount: 0,
+                metadata: {},
+            } as any,
+        })).toBe('agent_queue');
+    });
+
+    it('uses server_pending for interrupt mode when agent is offline', () => {
+        expect(chooseSubmitMode({
+            configuredMode: 'interrupt',
+            session: {
+                thinking: true,
+                presence: 0,
+                agentStateVersion: 1,
+                agentState: { controlledByUser: false },
+                pendingVersion: 0,
+                pendingCount: 0,
+                metadata: {},
+            } as any,
+        })).toBe('server_pending');
     });
 
     it('falls back to agent_queue when configuredMode=server_pending but the server does not support pending', () => {

@@ -11,8 +11,6 @@ export function chooseSubmitMode(opts: {
     session: Session | null;
 }): MessageSendMode {
     const configuredMode = opts.configuredMode;
-    if (configuredMode === 'interrupt') return 'interrupt';
-
     const session = opts.session;
     // Server-side pending queue V2 support is negotiated via session summary fields.
     // Mixed-version safety: older servers won't include these fields.
@@ -40,6 +38,13 @@ export function chooseSubmitMode(opts: {
     const inFlightSteer = Boolean(session?.agentState?.capabilities?.inFlightSteer);
     const busySteerSendPolicy: BusySteerSendPolicy = opts.busySteerSendPolicy ?? 'steer_immediately';
 
+    // Interrupt mode: abort the current turn and resend, but only when the agent is
+    // actually busy and reachable.  When idle there is nothing to abort — sending the
+    // message directly avoids a spurious "Aborted by user" event and restart cycle.
+    if (configuredMode === 'interrupt' && isBusy && isOnline && agentReady && !controlledByUser) {
+        return 'interrupt';
+    }
+
     // Prefer the metadata-backed queue when:
     // - terminal has control (can't safely inject into local stdin),
     // - the agent is busy (user may want to edit/remove before processing),
@@ -55,6 +60,11 @@ export function chooseSubmitMode(opts: {
     if (controlledByUser || isBusy || !isOnline || !agentReady) {
         return 'server_pending';
     }
+
+    // Agent is idle, online, and ready — send directly. For interrupt mode this
+    // falls through to agent_queue so the message goes straight to the agent
+    // without an unnecessary abort.
+    if (configuredMode === 'interrupt') return 'agent_queue';
 
     return configuredMode;
 }
