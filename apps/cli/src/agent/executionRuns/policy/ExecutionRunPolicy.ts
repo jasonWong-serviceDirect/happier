@@ -54,7 +54,10 @@ export function resolveExecutionRunPolicy(params: Readonly<{
 
 export function isSafePermissionModeForIntent(intent: ExecutionRunIntent, permissionModeRaw: string): boolean {
   const mode = permissionModeRaw.trim();
-  if (intent === 'review' || intent === 'plan' || intent === 'voice_agent' || intent === 'memory_hints') {
+  if (intent === 'voice_agent') {
+    return mode === 'no_tools' || mode === 'read_only' || mode === 'yolo';
+  }
+  if (intent === 'review' || intent === 'plan' || intent === 'memory_hints') {
     return mode === 'no_tools' || mode === 'read_only';
   }
   return true;
