@@ -102,18 +102,30 @@ export function createDefaultActionExecutor(opts?: Readonly<{
     resetGlobalVoiceAgent: async () => {
       voiceActivityController.clearSession(VOICE_AGENT_GLOBAL_SESSION_ID);
       const stateAny: any = storage.getState();
-      const transcriptCfg = stateAny?.settings?.voice?.adapters?.local_conversation?.agent?.transcript ?? null;
+      const voiceSettings = stateAny?.settings?.voice;
+      const transcriptCfg = voiceSettings?.adapters?.local_conversation?.agent?.transcript ?? null;
       if (transcriptCfg?.persistenceMode === 'persistent' && typeof stateAny?.applySettingsLocal === 'function') {
         const currentEpochRaw = Number(transcriptCfg.epoch ?? 0);
         const currentEpoch = Number.isFinite(currentEpochRaw) && currentEpochRaw >= 0 ? Math.floor(currentEpochRaw) : 0;
         const nextEpoch = currentEpoch + 1;
         try {
+          // applySettingsLocal uses shallow spread — we must preserve the full voice
+          // settings tree and only update the epoch, otherwise all other voice settings
+          // (providerId, ui, privacy, other adapters) get wiped to defaults.
+          const adapters = voiceSettings?.adapters;
+          const localConv = adapters?.local_conversation;
+          const agent = localConv?.agent;
           stateAny.applySettingsLocal({
             voice: {
+              ...voiceSettings,
               adapters: {
+                ...adapters,
                 local_conversation: {
+                  ...localConv,
                   agent: {
+                    ...agent,
                     transcript: {
+                      ...(agent?.transcript ?? {}),
                       epoch: nextEpoch,
                     },
                   },
