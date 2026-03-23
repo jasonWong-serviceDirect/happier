@@ -134,6 +134,7 @@ export const en = {
         justNow: 'just now',
         minutesAgo: ({ count }: { count: number }) => `${count} minute${count !== 1 ? 's' : ''} ago`,
         hoursAgo: ({ count }: { count: number }) => `${count} hour${count !== 1 ? 's' : ''} ago`,
+        daysAgo: ({ count }: { count: number }) => `${count} day${count !== 1 ? 's' : ''} ago`,
     },
 
     connect: {
@@ -658,6 +659,14 @@ export const en = {
             helpText: 'You can find session IDs in the Session Info screen.',
             cannotApplyBody:
                 'This resume ID can’t be applied right now. Happier will start a new session instead.\n\nIf you expected resume to work, check that the provider is configured for resume (e.g. Codex backend mode set to ACP or MCP + resume) and that the required machine dependencies are installed.',
+            projectsTitle: 'Select Project',
+            sessionsTitle: ({ project }: { project: string }) => `Sessions in ${project}`,
+            noSessions: 'No sessions found',
+            active: 'Active',
+            manualEntry: 'Enter session ID manually',
+            unsupported: 'Update CLI to browse sessions',
+            loadingProjects: 'Loading projects...',
+            loadingSessions: 'Loading sessions...',
         },
         codexResumeBanner: {
             title: 'Codex resume',

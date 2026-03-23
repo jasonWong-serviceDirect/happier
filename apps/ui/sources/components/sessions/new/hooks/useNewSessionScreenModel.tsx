@@ -1490,9 +1490,11 @@ export function useNewSessionScreenModel(): NewSessionScreenModel {
             params: {
                 currentResumeId: resumeSessionId,
                 agentType,
+                machineId: selectedMachineId,
+                serverId: targetServerId,
             },
         });
-    }, [router, resumeSessionId, agentType]);
+    }, [router, resumeSessionId, agentType, selectedMachineId, targetServerId]);
 
     const selectedProfileForEnvVars = React.useMemo(() => {
         if (!useProfiles || !selectedProfileId) return null;

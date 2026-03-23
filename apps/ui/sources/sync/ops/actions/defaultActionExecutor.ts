@@ -30,6 +30,7 @@ import { listRecentPathsForVoiceTool } from '@/voice/tools/actionImpl/pathsListR
 import { listMachinesForVoiceTool } from '@/voice/tools/actionImpl/machinesList';
 import { listServersForVoiceTool } from '@/voice/tools/actionImpl/serversList';
 import { listAgentBackendsForVoiceTool, listAgentModelsForVoiceTool } from '@/voice/tools/actionImpl/agentCatalogList';
+import { listNativeSessionsForVoiceTool } from '@/voice/tools/actionImpl/nativeSessionList';
 
 export function createDefaultActionExecutor(opts?: Readonly<{
   resolveServerIdForSessionId?: (sessionId: string) => string | null;
@@ -57,8 +58,8 @@ export function createDefaultActionExecutor(opts?: Readonly<{
     sessionOpen: async ({ sessionId }) =>
       await openSessionForVoiceTool({ sessionId, resolveServerIdForSessionId: opts?.resolveServerIdForSessionId }),
 
-    sessionSpawnNew: async ({ tag, workspaceId, agentId, modelId, path, host, initialMessage }) =>
-      await spawnSessionForVoiceTool({ tag, workspaceId, agentId, modelId, path, host, initialMessage }),
+    sessionSpawnNew: async ({ tag, workspaceId, agentId, modelId, path, host, initialMessage, resume }) =>
+      await spawnSessionForVoiceTool({ tag, workspaceId, agentId, modelId, path, host, initialMessage, resume }),
 
     sessionSpawnPicker: async ({ tag, agentId, modelId, initialMessage }) =>
       await spawnSessionWithPickerForVoiceTool({ tag, agentId, modelId, initialMessage }),
@@ -92,6 +93,8 @@ export function createDefaultActionExecutor(opts?: Readonly<{
     sessionTargetPrimarySet: async ({ sessionId }) => await setPrimaryActionSessionId({ sessionId }),
     sessionTargetTrackedSet: async ({ sessionIds }) => await setTrackedSessionIds({ sessionIds }),
     sessionList: async ({ limit, cursor, includeLastMessagePreview }) => await listSessionsForVoiceTool({ limit, cursor, includeLastMessagePreview }),
+    nativeSessionList: async ({ machineId, projectDir, limit }) =>
+      await listNativeSessionsForVoiceTool({ machineId, projectDir, limit }),
     sessionActivityGet: async ({ sessionId, windowSeconds }) => await getSessionActivityForVoiceTool({ sessionId, windowSeconds }),
     sessionRecentMessagesGet: async ({ sessionId, defaultSessionId, limit, cursor, includeUser, includeAssistant, maxCharsPerMessage }) =>
       await getSessionRecentMessagesForVoiceTool({ sessionId, defaultSessionId, limit, cursor, includeUser, includeAssistant, maxCharsPerMessage }),

@@ -207,6 +207,7 @@ const SessionSpawnNewInputSchema = z.object({
   path: z.string().min(1).optional(),
   host: z.string().min(1).optional(),
   initialMessage: z.string().min(1).optional(),
+  resume: z.string().min(1).optional(),
 }).passthrough();
 
 const SessionSpawnPickerInputSchema = z.object({
@@ -214,6 +215,12 @@ const SessionSpawnPickerInputSchema = z.object({
   agentId: z.string().min(1).optional(),
   modelId: z.string().min(1).optional(),
   initialMessage: z.string().min(1).optional(),
+}).passthrough();
+
+const NativeSessionListInputSchema = z.object({
+  machineId: z.string().min(1).optional(),
+  projectDir: z.string().min(1).optional(),
+  limit: z.number().int().min(1).max(10).optional(),
 }).passthrough();
 
 const WorkspacesListRecentInputSchema = z.object({
@@ -673,7 +680,7 @@ export const ACTION_SPECS: readonly ActionSpec[] = Object.freeze([
     placements: ['command_palette', 'session_info', 'voice_panel'],
     bindings: { voiceClientToolName: 'spawnSession' },
     examples: {
-      voice: { argsExample: '{"tag":"...optional...","workspaceId":"...optional...","agentId":"...optional...","modelId":"...optional...","path":"...optional...","host":"...optional...","initialMessage":"...optional..."}' },
+      voice: { argsExample: '{"tag":"...optional...","workspaceId":"...optional...","agentId":"...optional...","modelId":"...optional...","path":"...optional...","host":"...optional...","initialMessage":"...optional...","resume":"...optional..."}' },
     },
     surfaces: {
       ui_button: true,
@@ -693,6 +700,7 @@ export const ACTION_SPECS: readonly ActionSpec[] = Object.freeze([
         { path: 'path', title: 'Path', widget: 'text' },
         { path: 'host', title: 'Host', widget: 'text' },
         { path: 'initialMessage', title: 'Initial message', widget: 'textarea' },
+        { path: 'resume', title: 'Resume session id', widget: 'text' },
       ],
     },
     inputSchema: SessionSpawnNewInputSchema,
@@ -1015,6 +1023,34 @@ export const ACTION_SPECS: readonly ActionSpec[] = Object.freeze([
       ],
     },
     inputSchema: SessionListInputSchema,
+  },
+  {
+    id: 'nativeSession.list',
+    title: 'List native Claude sessions',
+    description: 'List recent Claude Code sessions from the machine that were started outside of Happier. Returns session summaries with project directory and last prompt. Use when the user asks to resume a previous Claude session, see what sessions exist on the machine, or wants to continue a conversation from the terminal.',
+    safety: 'safe',
+    placements: ['voice_panel'],
+    bindings: { voiceClientToolName: 'listNativeSessions' },
+    examples: {
+      voice: { argsExample: '{"limit":5}' },
+    },
+    surfaces: {
+      ui_button: false,
+      ui_slash_command: false,
+      voice_tool: true,
+      voice_action_block: true,
+      mcp: false,
+      session_control_cli: false,
+    },
+    inputHints: {
+      title: 'List native Claude sessions',
+      fields: [
+        { path: 'machineId', title: 'Machine id', widget: 'text' },
+        { path: 'projectDir', title: 'Project directory', widget: 'text' },
+        { path: 'limit', title: 'Limit', widget: 'text' },
+      ],
+    },
+    inputSchema: NativeSessionListInputSchema,
   },
   {
     id: 'session.activity.get',

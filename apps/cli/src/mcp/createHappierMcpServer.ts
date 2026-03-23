@@ -78,6 +78,7 @@ export function createHappierMcpServer(client: HappyMcpSessionClient): { mcp: Mc
     sessionTargetPrimarySet: async () => ({ ok: false, errorCode: 'unsupported_action', error: 'unsupported_action:session.target.primary.set' }),
     sessionTargetTrackedSet: async () => ({ ok: false, errorCode: 'unsupported_action', error: 'unsupported_action:session.target.tracked.set' }),
     sessionList: async () => ({ ok: false, errorCode: 'unsupported_action', error: 'unsupported_action:session.list' }),
+    nativeSessionList: async () => ({ ok: false, errorCode: 'unsupported_action', error: 'unsupported_action:nativeSession.list' }),
     sessionActivityGet: async () => ({ ok: false, errorCode: 'unsupported_action', error: 'unsupported_action:session.activity.get' }),
     sessionRecentMessagesGet: async () => ({ ok: false, errorCode: 'unsupported_action', error: 'unsupported_action:session.messages.recent.get' }),
     resetGlobalVoiceAgent: async () => {},

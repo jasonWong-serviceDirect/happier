@@ -517,6 +517,23 @@ export {
 } from './executionRuns.js';
 
 export {
+  NativeSessionEntrySchema,
+  NativeSessionProjectDirSummarySchema,
+  NativeSessionListRequestSchema,
+  NativeSessionListResponseSchema,
+  NativeSessionTranscriptEntrySchema,
+  NativeSessionTranscriptRequestSchema,
+  NativeSessionTranscriptResponseSchema,
+  type NativeSessionEntry,
+  type NativeSessionProjectDirSummary,
+  type NativeSessionListRequest,
+  type NativeSessionListResponse,
+  type NativeSessionTranscriptEntry,
+  type NativeSessionTranscriptRequest,
+  type NativeSessionTranscriptResponse,
+} from './nativeSessions.js';
+
+export {
   DaemonExecutionRunMarkerSchema,
   DaemonExecutionRunProcessInfoSchema,
   DaemonExecutionRunEntrySchema,

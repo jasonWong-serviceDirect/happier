@@ -124,6 +124,7 @@ const zhHantOverrides: DeepPartial<TranslationStructure> = {
         justNow: '剛剛',
         minutesAgo: ({ count }: { count: number }) => `${count} 分鐘前`,
         hoursAgo: ({ count }: { count: number }) => `${count} 小時前`,
+        daysAgo: ({ count }: { count: number }) => `${count} 天前`,
     },
 
     connect: {
@@ -401,7 +402,27 @@ const zhHantOverrides: DeepPartial<TranslationStructure> = {
             notGitRepo: 'Worktree 需要 git 倉庫',
             failed: ({ error }: { error: string }) => `建立 worktree 失敗：${error}`,
             success: 'Worktree 建立成功',
-        }
+        },
+        resume: {
+            title: '恢復工作階段',
+            optional: '恢復：可選',
+            pickerTitle: '恢復工作階段',
+            subtitle: ({ agent }: { agent: string }) => `貼上 ${agent} 工作階段 ID 以恢復`,
+            placeholder: ({ agent }: { agent: string }) => `貼上 ${agent} 工作階段 ID…`,
+            paste: '貼上',
+            save: '儲存',
+            clearAndRemove: '清除',
+            helpText: '您可以在「工作階段資訊」畫面找到工作階段 ID。',
+            cannotApplyBody: '此恢復 ID 目前無法套用。Happier 將改為啟動新工作階段。',
+            projectsTitle: '選擇專案',
+            sessionsTitle: ({ project }: { project: string }) => `${project} 的工作階段`,
+            noSessions: '未找到工作階段',
+            active: '活躍',
+            manualEntry: '手動輸入工作階段 ID',
+            unsupported: '更新 CLI 以瀏覽工作階段',
+            loadingProjects: '正在載入專案...',
+            loadingSessions: '正在載入工作階段...',
+        },
     },
 
     sessionHistory: {

@@ -131,6 +131,8 @@ export const pt: TranslationStructure = {
       `há ${count} minuto${count !== 1 ? "s" : ""}`,
     hoursAgo: ({ count }: { count: number }) =>
       `há ${count} hora${count !== 1 ? "s" : ""}`,
+    daysAgo: ({ count }: { count: number }) =>
+      `ha ${count} dia${count !== 1 ? "s" : ""}`,
   },
 
   connect: {
@@ -755,6 +757,14 @@ export const pt: TranslationStructure = {
         "Você pode encontrar os IDs de sessão na tela de informações da sessão.",
       cannotApplyBody:
         "Este ID de retomada não pode ser aplicado agora. O Happier iniciará uma nova sessão em vez disso.",
+            projectsTitle: "Selecionar projeto",
+            sessionsTitle: ({ project }: { project: string }) => `Sessoes em ${project}`,
+            noSessions: "Nenhuma sessao encontrada",
+            active: "Ativa",
+            manualEntry: "Inserir ID de sessao manualmente",
+            unsupported: "Atualize o CLI para navegar nas sessoes",
+            loadingProjects: "Carregando projetos...",
+            loadingSessions: "Carregando sessoes...",
     },
     codexResumeBanner: {
       title: "Codex resume",

@@ -52,6 +52,7 @@ export type ActionExecutorDeps = Readonly<{
     path?: string;
     host?: string;
     initialMessage?: string;
+    resume?: string;
   }>) => Promise<unknown>;
   sessionSpawnPicker: (args: Readonly<{ tag?: string; agentId?: string; modelId?: string; initialMessage?: string }>) => Promise<unknown>;
 
@@ -78,6 +79,11 @@ export type ActionExecutorDeps = Readonly<{
   sessionTargetPrimarySet: (args: Readonly<{ sessionId: string | null }>) => Promise<unknown>;
   sessionTargetTrackedSet: (args: Readonly<{ sessionIds: readonly string[] }>) => Promise<unknown>;
   sessionList: (args: Readonly<{ limit?: number; cursor?: string | null; includeLastMessagePreview?: boolean }>) => Promise<unknown>;
+  nativeSessionList: (args: Readonly<{
+    machineId?: string;
+    projectDir?: string;
+    limit?: number;
+  }>) => Promise<unknown>;
   sessionActivityGet: (args: Readonly<{ sessionId: string; windowSeconds?: number }>) => Promise<unknown>;
   sessionRecentMessagesGet: (args: Readonly<{
     sessionId: string;
@@ -309,6 +315,7 @@ export function createActionExecutor(deps: ActionExecutorDeps): Readonly<{
             ...(((parsed.data as any).path) ? { path: String((parsed.data as any).path) } : {}),
             ...(((parsed.data as any).host) ? { host: String((parsed.data as any).host) } : {}),
             ...(((parsed.data as any).initialMessage) ? { initialMessage: String((parsed.data as any).initialMessage) } : {}),
+            ...(((parsed.data as any).resume) ? { resume: String((parsed.data as any).resume) } : {}),
           });
           return { ok: true, result: res };
         }
@@ -407,6 +414,15 @@ export function createActionExecutor(deps: ActionExecutorDeps): Readonly<{
             ...(typeof (parsed.data as any).limit === 'number' ? { limit: (parsed.data as any).limit } : {}),
             ...(Object.prototype.hasOwnProperty.call(parsed.data, 'cursor') ? { cursor: (((parsed.data as any).cursor ?? null) as any) } : {}),
             ...(typeof (parsed.data as any).includeLastMessagePreview === 'boolean' ? { includeLastMessagePreview: (parsed.data as any).includeLastMessagePreview } : {}),
+          });
+          return { ok: true, result: res };
+        }
+
+        if (actionId === 'nativeSession.list') {
+          const res = await deps.nativeSessionList({
+            ...(typeof (parsed.data as any).machineId === 'string' ? { machineId: String((parsed.data as any).machineId) } : {}),
+            ...(typeof (parsed.data as any).projectDir === 'string' ? { projectDir: String((parsed.data as any).projectDir) } : {}),
+            ...(typeof (parsed.data as any).limit === 'number' ? { limit: (parsed.data as any).limit } : {}),
           });
           return { ok: true, result: res };
         }

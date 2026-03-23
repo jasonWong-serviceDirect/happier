@@ -38,6 +38,8 @@ export const RPC_METHODS = {
   BUGREPORT_COLLECT_DIAGNOSTICS: 'bugreport.collectDiagnostics',
   BUGREPORT_GET_LOG_TAIL: 'bugreport.getLogTail',
   BUGREPORT_UPLOAD_ARTIFACT: 'bugreport.uploadArtifact',
+  DAEMON_NATIVE_SESSIONS_LIST: 'daemon.nativeSessions.list',
+  DAEMON_NATIVE_SESSIONS_TRANSCRIPT: 'daemon.nativeSessions.transcript',
 } as const;
 
 export type RpcMethod = (typeof RPC_METHODS)[keyof typeof RPC_METHODS];

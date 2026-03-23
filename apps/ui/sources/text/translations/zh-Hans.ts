@@ -130,6 +130,7 @@ export const zhHans: TranslationStructure = {
     justNow: "刚刚",
     minutesAgo: ({ count }: { count: number }) => `${count} 分钟前`,
     hoursAgo: ({ count }: { count: number }) => `${count} 小时前`,
+    daysAgo: ({ count }: { count: number }) => `${count} 天前`,
   },
 
   connect: {
@@ -709,6 +710,14 @@ export const zhHans: TranslationStructure = {
       clearAndRemove: "清除",
       helpText: "你可以在“会话信息”页面找到会话 ID。",
       cannotApplyBody: "此恢复 ID 当前无法应用。Happier 将改为启动一个新会话。",
+            projectsTitle: "选择项目",
+            sessionsTitle: ({ project }: { project: string }) => `${project} 的会话`,
+            noSessions: "未找到会话",
+            active: "活跃",
+            manualEntry: "手动输入会话ID",
+            unsupported: "更新 CLI 以浏览会话",
+            loadingProjects: "正在加载项目...",
+            loadingSessions: "正在加载会话...",
     },
     codexResumeBanner: {
       title: "Codex resume",

@@ -733,6 +733,14 @@ export const ru: TranslationStructure = {
       helpText: "ID сессии можно найти на экране информации о сессии.",
       cannotApplyBody:
         "Этот ID возобновления сейчас нельзя применить. Happier вместо этого начнёт новую сессию.",
+            projectsTitle: "Выбрать проект",
+            sessionsTitle: ({ project }: { project: string }) => `Сессии в ${project}`,
+            noSessions: "Сессии не найдены",
+            active: "Активна",
+            manualEntry: "Ввести ID сессии вручную",
+            unsupported: "Обновите CLI для просмотра сессий",
+            loadingProjects: "Загрузка проектов...",
+            loadingSessions: "Загрузка сессий...",
     },
     codexResumeBanner: {
       title: "Codex resume",
@@ -1031,6 +1039,8 @@ export const ru: TranslationStructure = {
       `${count} ${plural({ count, one: "минуту", few: "минуты", many: "минут" })} назад`,
     hoursAgo: ({ count }: { count: number }) =>
       `${count} ${plural({ count, one: "час", few: "часа", many: "часов" })} назад`,
+    daysAgo: ({ count }: { count: number }) =>
+      `${count} ${plural({ count, one: "день", few: "дня", many: "дней" })} назад`,
   },
 
   session: {

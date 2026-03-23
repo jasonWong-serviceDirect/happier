@@ -5,6 +5,7 @@ import { Modal } from '@/modal';
 import { sync } from '@/sync/sync';
 import { storage } from '@/sync/domains/state/storage';
 import { machineSpawnNewSession } from '@/sync/ops';
+import { machineNativeSessionTranscript, convertTranscriptToNormalizedMessages } from '@/sync/ops/machineNativeSessions';
 import { resolveTerminalSpawnOptions } from '@/sync/domains/settings/terminalSettings';
 import { getActiveServerSnapshot } from '@/sync/domains/server/serverRuntime';
 import { resolveNewSessionServerTarget } from '@/sync/domains/server/selection/serverSelectionResolver';
@@ -420,6 +421,26 @@ export function useCreateNewSession(params: Readonly<{
                         } catch {
                             // Non-blocking: session is created and will be opened regardless.
                         }
+                    }
+                }
+
+                // Inject pre-resume history into session message store
+                if (resumeDecision.resume) {
+                    try {
+                        const transcript = await machineNativeSessionTranscript(
+                            params.selectedMachineId!,
+                            { sessionId: resumeDecision.resume!, limit: 100 },
+                            { serverId: resolvedTargetServerId },
+                        );
+                        if (transcript.ok && transcript.messages.length > 0) {
+                            const normalized = convertTranscriptToNormalizedMessages(
+                                resumeDecision.resume!,
+                                transcript.messages,
+                            );
+                            storage.getState().applyMessages(result.sessionId!, normalized);
+                        }
+                    } catch {
+                        // Best-effort: history injection should never block session creation
                     }
                 }
 

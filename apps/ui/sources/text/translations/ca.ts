@@ -121,6 +121,7 @@ export const ca: TranslationStructure = {
         justNow: 'ara mateix',
         minutesAgo: ({ count }: { count: number }) => `fa ${count} minut${count !== 1 ? 's' : ''}`,
         hoursAgo: ({ count }: { count: number }) => `fa ${count} hora${count !== 1 ? 'es' : ''}`,
+        daysAgo: ({ count }: { count: number }) => `fa ${count} dia${count !== 1 ? 's' : ''}`,
     },
 
     connect: {
@@ -642,6 +643,14 @@ deps: {
             clearAndRemove: 'Esborra',
             helpText: 'Pots trobar els IDs de sessió a la pantalla d’informació de sessió.',
             cannotApplyBody: 'Aquest ID de represa no es pot aplicar ara mateix. Happier iniciarà una sessió nova.',
+            projectsTitle: 'Seleccionar projecte',
+            sessionsTitle: ({ project }: { project: string }) => `Sessions a ${project}`,
+            noSessions: 'No s\'han trobat sessions',
+            active: 'Activa',
+            manualEntry: 'Introduir ID de sessio manualment',
+            unsupported: 'Actualitza CLI per explorar sessions',
+            loadingProjects: 'Carregant projectes...',
+            loadingSessions: 'Carregant sessions...',
         },
         codexResumeBanner: {
             title: 'Codex resume',

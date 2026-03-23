@@ -51,6 +51,7 @@ export function createSessionControlActionExecutor(params: Readonly<{
     sessionTargetPrimarySet: async () => notSupported(),
     sessionTargetTrackedSet: async () => notSupported(),
     sessionList: async () => notSupported(),
+    nativeSessionList: async () => notSupported(),
     sessionActivityGet: async () => notSupported(),
     sessionRecentMessagesGet: async () => notSupported(),
     resetGlobalVoiceAgent: () => notSupported(),

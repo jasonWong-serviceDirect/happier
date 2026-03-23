@@ -16,6 +16,8 @@ import type { CatalogAgentId } from '@/backends/types';
 import { readCredentials } from '@/persistence';
 import { hydrateReplayDialogFromTranscript } from '@/session/replay/hydrateReplayDialogFromTranscript';
 import { listExecutionRunMarkers } from '@/daemon/executionRunRegistry';
+import { listNativeSessions } from '@/daemon/nativeSessions/listNativeSessions';
+import { readNativeSessionTranscript } from '@/daemon/nativeSessions/readNativeSessionTranscript';
 import psList from 'ps-list';
 import type { DaemonExecutionRunEntry, DaemonExecutionRunProcessInfo } from '@happier-dev/protocol';
 
@@ -474,5 +476,20 @@ export function registerMachineRpcHandlers(params: Readonly<{
       error: 'Daemon-side upload is not enabled; upload via report service pre-signed URL from UI.',
       uploadUrl: typeof params?.uploadUrl === 'string' ? params.uploadUrl : null,
     };
+  });
+
+  rpcHandlerManager.registerHandler(RPC_METHODS.DAEMON_NATIVE_SESSIONS_LIST, async (params: any) => {
+    return await listNativeSessions({
+      projectDir: typeof params?.projectDir === 'string' ? params.projectDir.trim() : undefined,
+      limit: typeof params?.limit === 'number' ? params.limit : 50,
+      offset: typeof params?.offset === 'number' ? params.offset : 0,
+    });
+  });
+
+  rpcHandlerManager.registerHandler(RPC_METHODS.DAEMON_NATIVE_SESSIONS_TRANSCRIPT, async (params: any) => {
+    return await readNativeSessionTranscript({
+      sessionId: typeof params?.sessionId === 'string' ? params.sessionId.trim() : '',
+      limit: typeof params?.limit === 'number' ? params.limit : 100,
+    });
   });
 }

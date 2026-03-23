@@ -27,6 +27,7 @@ describe('createActionExecutor', () => {
             sessionTargetPrimarySet: async () => ({}),
             sessionTargetTrackedSet: async () => ({}),
             sessionList: async () => ({}),
+            nativeSessionList: async () => ({}),
             sessionActivityGet: async () => ({}),
             sessionRecentMessagesGet: async () => ({}),
             resetGlobalVoiceAgent: async () => {},

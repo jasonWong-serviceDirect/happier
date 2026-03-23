@@ -36,6 +36,9 @@ export const ACTION_IDS = [
   // Voice global controls
   'ui.voice_global.reset',
 
+  // Native session discovery (voice)
+  'nativeSession.list',
+
   // Daemon-local memory search (opt-in)
   'memory.search',
   'memory.get_window',

@@ -144,6 +144,8 @@ export const pl: TranslationStructure = {
       `${count} ${plural({ count, one: "minuta", few: "minuty", many: "minut" })} temu`,
     hoursAgo: ({ count }: { count: number }) =>
       `${count} ${plural({ count, one: "godzina", few: "godziny", many: "godzin" })} temu`,
+    daysAgo: ({ count }: { count: number }) =>
+      `${count} ${plural({ count, one: "dzien", few: "dni", many: "dni" })} temu`,
   },
 
   connect: {
@@ -767,6 +769,14 @@ export const pl: TranslationStructure = {
       helpText: "ID sesji znajdziesz na ekranie informacji o sesji.",
       cannotApplyBody:
         "Nie można teraz zastosować tego ID wznowienia. Happier uruchomi zamiast tego nową sesję.",
+            projectsTitle: "Wybierz projekt",
+            sessionsTitle: ({ project }: { project: string }) => `Sesje w ${project}`,
+            noSessions: "Nie znaleziono sesji",
+            active: "Aktywna",
+            manualEntry: "Wpisz ID sesji recznie",
+            unsupported: "Zaktualizuj CLI, aby przegladac sesje",
+            loadingProjects: "Ladowanie projektow...",
+            loadingSessions: "Ladowanie sesji...",
     },
     codexResumeBanner: {
       title: "Codex resume",

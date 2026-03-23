@@ -45,6 +45,7 @@ export async function spawnSessionForVoiceTool(params: Readonly<{
   path?: string;
   host?: string;
   initialMessage?: string;
+  resume?: string;
 }>): Promise<unknown> {
   const state: any = storage.getState();
 
@@ -106,6 +107,7 @@ export async function spawnSessionForVoiceTool(params: Readonly<{
     directory,
     agent,
     serverId,
+    resume: normalizeNonEmptyString(params.resume) ?? undefined,
     ...(modelId ? { modelId, modelUpdatedAt: modelUpdatedAt ?? Date.now() } : {}),
   });
 

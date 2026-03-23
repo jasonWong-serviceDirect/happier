@@ -424,6 +424,7 @@ export const ja: TranslationStructure = {
     justNow: "たった今",
     minutesAgo: ({ count }: { count: number }) => `${count}分前`,
     hoursAgo: ({ count }: { count: number }) => `${count}時間前`,
+    daysAgo: ({ count }: { count: number }) => `${count}日前`,
   },
 
   connect: {
@@ -1037,6 +1038,14 @@ export const ja: TranslationStructure = {
       helpText: "セッションIDは「セッション情報」画面で確認できます。",
       cannotApplyBody:
         "この再開IDは現在適用できません。代わりに新しいセッションを開始します。",
+            projectsTitle: "プロジェクトを選択",
+            sessionsTitle: ({ project }: { project: string }) => `${project} のセッション`,
+            noSessions: "セッションが見つかりません",
+            active: "アクティブ",
+            manualEntry: "セッションIDを手動で入力",
+            unsupported: "CLIを更新してセッションを閲覧",
+            loadingProjects: "プロジェクトを読み込み中...",
+            loadingSessions: "セッションを読み込み中...",
     },
     codexResumeBanner: {
       title: "Codex resume",
