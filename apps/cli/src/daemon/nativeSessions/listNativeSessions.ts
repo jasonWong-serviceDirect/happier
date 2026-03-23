@@ -220,10 +220,13 @@ export async function listNativeSessions(params: Readonly<{
 
   const projectDirs: NativeSessionProjectDirSummary[] = [];
 
+  const needSessionDetails = Boolean(projectDir);
+
   const dirTasks = projectEntries.map(async (dirEncoded) => {
     const dirPath = path.join(projectsRoot, dirEncoded);
+    let dirStat;
     try {
-      const dirStat = await fs.stat(dirPath);
+      dirStat = await fs.stat(dirPath);
       if (!dirStat.isDirectory()) return null;
     } catch {
       return null;
@@ -238,6 +241,17 @@ export async function listNativeSessions(params: Readonly<{
 
     const jsonlFiles = files.filter((f) => f.endsWith('.jsonl'));
     if (jsonlFiles.length === 0) return null;
+
+    // For the summary-only case (no projectDir filter), use directory mtime
+    // and heuristic decode to avoid expensive per-file I/O across all projects.
+    if (!needSessionDetails) {
+      return {
+        dir: decodeProjectDirName(dirEncoded),
+        dirEncoded,
+        sessionCount: jsonlFiles.length,
+        latestMtimeMs: dirStat.mtimeMs,
+      } satisfies NativeSessionProjectDirSummary;
+    }
 
     let latestMtimeMs = 0;
 
