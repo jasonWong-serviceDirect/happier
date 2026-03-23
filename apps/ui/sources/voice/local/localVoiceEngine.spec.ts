@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { VOICE_AGENT_GLOBAL_SESSION_ID } from '@/voice/agent/voiceAgentGlobalSessionId';
 import {
     daemonVoiceAgentStart,
     getStorage,
@@ -79,8 +80,8 @@ describe('local voice engine (turn-based) smoke', () => {
         });
 
         const { toggleLocalVoiceTurn } = await import('./localVoiceEngine');
-        await toggleLocalVoiceTurn('s1');
-        await toggleLocalVoiceTurn('s1');
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
 
         expect(daemonVoiceAgentStart).toHaveBeenCalledTimes(1);
         const startArgs = (daemonVoiceAgentStart as any).mock.calls?.[0]?.[0];

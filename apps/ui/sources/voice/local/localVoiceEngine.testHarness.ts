@@ -265,6 +265,29 @@ vi.mock('expo-router', () => ({
     router: { navigate: (...args: any[]) => routerNavigate(...args) },
 }));
 
+vi.mock('@/voice/agent/voiceCarrierSession', async () => {
+    const actual = await vi.importActual<any>('@/voice/agent/voiceCarrierSession');
+    return {
+        ...actual,
+        ensureVoiceCarrierSessionId: async () => {
+            const { storage } = await import('@/sync/domains/state/storage');
+            const existing = actual.findVoiceCarrierSessionId(storage.getState());
+            return existing ?? 'sys_voice_carrier';
+        },
+        ensureVoiceCarrierSessionForVoiceHome: async () => {
+            const { storage } = await import('@/sync/domains/state/storage');
+            const existing = actual.findVoiceCarrierSessionId(storage.getState());
+            return existing ?? 'sys_voice_carrier';
+        },
+        ensureVoiceCarrierSessionForSessionRoot: async () => {
+            const { storage } = await import('@/sync/domains/state/storage');
+            const existing = actual.findVoiceCarrierSessionId(storage.getState());
+            return existing ?? 'sys_voice_carrier';
+        },
+        retireAndRespawnVoiceCarrierSession: async () => null,
+    };
+});
+
 vi.mock('@/voice/agent/daemonVoiceAgentClient', () => ({
     DaemonVoiceAgentClient: class {
         async start(args: any) {

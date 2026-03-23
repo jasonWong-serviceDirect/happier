@@ -15,8 +15,7 @@ export function getVoiceContextSinkForSession(sessionId: string): VoiceContextSi
 
     const settings = storage.getState().settings as any;
     const providerId = settings?.voice?.providerId ?? 'off';
-    const conversationMode = settings?.voice?.adapters?.local_conversation?.conversationMode ?? 'direct_session';
-    if (providerId === 'local_conversation' && conversationMode === 'agent' && isLocalVoiceAgentActive(VOICE_AGENT_GLOBAL_SESSION_ID)) {
+    if (providerId === 'local_conversation' && isLocalVoiceAgentActive(VOICE_AGENT_GLOBAL_SESSION_ID)) {
         return {
             // Local agent is global: all session updates are forwarded into the single agent context.
             sendContextualUpdate: (_sid, update) => appendLocalVoiceAgentContextUpdate(VOICE_AGENT_GLOBAL_SESSION_ID, update),

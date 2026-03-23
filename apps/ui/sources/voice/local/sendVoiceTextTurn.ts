@@ -8,6 +8,7 @@ import { voiceActivityController } from '@/voice/activity/voiceActivityControlle
 import { createVoiceToolHandlers } from '@/voice/tools/handlers';
 import { resolveToolSessionId } from '@/voice/tools/resolveToolSessionId';
 
+import { VOICE_AGENT_GLOBAL_SESSION_ID } from '@/voice/agent/voiceAgentGlobalSessionId';
 import { patchLocalVoiceState, setIdleStateUnlessRecording } from './localVoiceState';
 import { resolveLocalVoiceAdapterSettings } from './localVoiceSettings';
 
@@ -40,8 +41,8 @@ export async function sendVoiceTextTurn(params: {
   const { sessionId, settings, userText } = params;
   const { adapterId, config } = resolveLocalVoiceAdapterSettings(settings);
   const networkTimeoutMs = resolveVoiceNetworkTimeoutMs(config?.networkTimeoutMs, 15_000);
-  const conversationMode =
-    adapterId === 'local_conversation' ? ((config?.conversationMode ?? 'direct_session') as 'direct_session' | 'agent') : 'direct_session';
+  const conversationMode: 'direct_session' | 'agent' =
+    sessionId === VOICE_AGENT_GLOBAL_SESSION_ID ? 'agent' : 'direct_session';
 
   voiceActivityController.appendUserText(sessionId, adapterId, userText);
 

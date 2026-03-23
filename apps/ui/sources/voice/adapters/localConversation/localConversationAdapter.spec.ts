@@ -18,7 +18,7 @@ const state: any = {
     voice: {
       providerId: 'local_conversation',
       adapters: {
-        local_conversation: { conversationMode: 'agent' },
+        local_conversation: {},
       },
     },
   },
@@ -41,23 +41,23 @@ vi.mock('@/voice/local/localVoiceEngine', () => ({
 }));
 
 describe('local conversation voice adapter', () => {
-  it('delegates toggle to local voice engine', async () => {
+  it('uses agent mode when sessionId is empty (dashboard)', async () => {
     const { createLocalConversationVoiceAdapter } = await import('./localConversationAdapter');
     const adapter = createLocalConversationVoiceAdapter();
 
-    await adapter.toggle({ sessionId: 's1' });
+    await adapter.toggle({ sessionId: '' });
     expect(toggleLocalVoiceTurn).toHaveBeenCalledWith(VOICE_AGENT_GLOBAL_SESSION_ID);
   });
 
-  it('prepares a session-root carrier when starting from a session in agent mode', async () => {
+  it('uses direct session mode when sessionId is provided (session screen)', async () => {
     const { createLocalConversationVoiceAdapter } = await import('./localConversationAdapter');
     const adapter = createLocalConversationVoiceAdapter();
 
     await adapter.toggle({ sessionId: 's1' });
-    expect(ensureVoiceCarrierSessionForSessionRoot).toHaveBeenCalledWith({ sessionId: 's1' });
+    expect(toggleLocalVoiceTurn).toHaveBeenCalledWith('s1');
   });
 
-  it('prepares a voice-home carrier when starting from the sidebar in agent mode', async () => {
+  it('prepares a voice-home carrier when starting in agent mode (empty sessionId)', async () => {
     const { createLocalConversationVoiceAdapter } = await import('./localConversationAdapter');
     const adapter = createLocalConversationVoiceAdapter();
 
@@ -65,12 +65,31 @@ describe('local conversation voice adapter', () => {
     expect(ensureVoiceCarrierSessionForVoiceHome).toHaveBeenCalled();
   });
 
-  it('sends context updates to the local agent buffer', async () => {
+  it('does not prepare a carrier session when starting in direct mode', async () => {
+    ensureVoiceCarrierSessionForVoiceHome.mockClear();
+    ensureVoiceCarrierSessionForSessionRoot.mockClear();
+    const { createLocalConversationVoiceAdapter } = await import('./localConversationAdapter');
+    const adapter = createLocalConversationVoiceAdapter();
+
+    await adapter.toggle({ sessionId: 's1' });
+    expect(ensureVoiceCarrierSessionForVoiceHome).not.toHaveBeenCalled();
+    expect(ensureVoiceCarrierSessionForSessionRoot).not.toHaveBeenCalled();
+  });
+
+  it('routes context updates to agent buffer when sessionId is empty', async () => {
+    const { createLocalConversationVoiceAdapter } = await import('./localConversationAdapter');
+    const adapter = createLocalConversationVoiceAdapter();
+
+    adapter.sendContextUpdate({ sessionId: '', update: 'context' });
+    expect(appendLocalVoiceAgentContextUpdate).toHaveBeenCalledWith(VOICE_AGENT_GLOBAL_SESSION_ID, 'context');
+  });
+
+  it('routes context updates to specific session when sessionId is provided', async () => {
     const { createLocalConversationVoiceAdapter } = await import('./localConversationAdapter');
     const adapter = createLocalConversationVoiceAdapter();
 
     adapter.sendContextUpdate({ sessionId: 's1', update: 'context' });
-    expect(appendLocalVoiceAgentContextUpdate).toHaveBeenCalledWith(VOICE_AGENT_GLOBAL_SESSION_ID, 'context');
+    expect(appendLocalVoiceAgentContextUpdate).toHaveBeenCalledWith('s1', 'context');
   });
 
   it('treats idle local voice state with a sessionId as connected (ready)', async () => {

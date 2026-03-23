@@ -328,9 +328,9 @@ describe('local voice engine agent behavior', () => {
 
         const { toggleLocalVoiceTurn, appendLocalVoiceAgentContextUpdate } = await import('./localVoiceEngine');
 
-        await toggleLocalVoiceTurn('s1');
-        appendLocalVoiceAgentContextUpdate('s1', 'Session became focused: s1');
-        await toggleLocalVoiceTurn('s1');
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
+        appendLocalVoiceAgentContextUpdate(VOICE_AGENT_GLOBAL_SESSION_ID, 'Session became focused: s1');
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
 
         const requestBody = (globalThis.fetch as any).mock.calls?.[1]?.[1]?.body;
         expect(String(requestBody)).toContain('Session became focused: s1');
@@ -387,13 +387,13 @@ describe('local voice engine agent behavior', () => {
             .mockRejectedValueOnce(new Error('agent turn failed'));
 
         const { toggleLocalVoiceTurn, getLocalVoiceState } = await import('./localVoiceEngine');
-        await toggleLocalVoiceTurn('s1');
-        await expect(toggleLocalVoiceTurn('s1')).resolves.toBeUndefined();
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
+        await expect(toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID)).resolves.toBeUndefined();
 
         const nextState = getLocalVoiceState();
         expect(nextState.status).toBe('idle');
         // Keep the session active so the user can retry without re-starting voice.
-        expect(nextState.sessionId).toBe('s1');
+        expect(nextState.sessionId).toBe(VOICE_AGENT_GLOBAL_SESSION_ID);
         expect(nextState.error).toBe('send_failed');
     });
 
@@ -454,8 +454,8 @@ describe('local voice engine agent behavior', () => {
             });
 
         const { toggleLocalVoiceTurn } = await import('./localVoiceEngine');
-        await toggleLocalVoiceTurn('s1');
-        await toggleLocalVoiceTurn('s1');
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
 
         expect(daemonVoiceAgentStart).toHaveBeenCalledTimes(1);
         expect(globalThis.fetch).toHaveBeenCalledTimes(2);
@@ -511,8 +511,8 @@ describe('local voice engine agent behavior', () => {
         });
 
         const { toggleLocalVoiceTurn } = await import('./localVoiceEngine');
-        await toggleLocalVoiceTurn('s1');
-        await toggleLocalVoiceTurn('s1');
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
 
         expect(daemonVoiceAgentStart).toHaveBeenCalledTimes(2);
         expect(daemonVoiceAgentSendTurn).toHaveBeenCalledTimes(2);
@@ -572,8 +572,8 @@ describe('local voice engine agent behavior', () => {
         });
 
         const { toggleLocalVoiceTurn } = await import('./localVoiceEngine');
-        await toggleLocalVoiceTurn('s1');
-        await toggleLocalVoiceTurn('s1');
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
 
         expect(daemonVoiceAgentStartTurnStream).toHaveBeenCalledTimes(1);
         expect(daemonVoiceAgentReadTurnStream).toHaveBeenCalledTimes(1);
@@ -623,7 +623,7 @@ describe('local voice engine agent behavior', () => {
         daemonVoiceAgentStart.mockResolvedValueOnce({ voiceAgentId: 'va1' });
 
         const { toggleLocalVoiceTurn } = await import('./localVoiceEngine');
-        await toggleLocalVoiceTurn('s1');
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
 
         for (let i = 0; i < 2000 && daemonVoiceAgentStart.mock.calls.length < 1; i++) {
             await Promise.resolve();
@@ -674,7 +674,7 @@ describe('local voice engine agent behavior', () => {
         daemonVoiceAgentWelcome.mockResolvedValueOnce({ assistantText: 'Welcome!' });
 
         const { toggleLocalVoiceTurn } = await import('./localVoiceEngine');
-        await toggleLocalVoiceTurn('s1');
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
 
         for (let i = 0; i < 2000 && daemonVoiceAgentWelcome.mock.calls.length < 1; i++) {
             await Promise.resolve();
@@ -804,8 +804,8 @@ describe('local voice engine agent behavior', () => {
         });
 
         const { toggleLocalVoiceTurn } = await import('./localVoiceEngine');
-        await toggleLocalVoiceTurn('s1');
-        await toggleLocalVoiceTurn('s1');
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
 
         expect(daemonVoiceAgentStartTurnStream).toHaveBeenCalledTimes(1);
         expect(daemonVoiceAgentSendTurn).toHaveBeenCalledTimes(1);
@@ -863,8 +863,8 @@ describe('local voice engine agent behavior', () => {
         });
 
         const { toggleLocalVoiceTurn } = await import('./localVoiceEngine');
-        await toggleLocalVoiceTurn('s1');
-        await toggleLocalVoiceTurn('s1');
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
 
         expect(daemonVoiceAgentCancelTurnStream).toHaveBeenCalledTimes(1);
         expect(daemonVoiceAgentSendTurn).toHaveBeenCalledTimes(1);
@@ -934,8 +934,8 @@ describe('local voice engine agent behavior', () => {
         });
 
         const { toggleLocalVoiceTurn } = await import('./localVoiceEngine');
-        await toggleLocalVoiceTurn('s1');
-        await toggleLocalVoiceTurn('s1');
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
 
         expect(daemonVoiceAgentStartTurnStream).toHaveBeenCalledTimes(1);
         expect(expoSpeechSpeak.mock.calls.length).toBeGreaterThan(1);
@@ -1004,8 +1004,8 @@ describe('local voice engine agent behavior', () => {
         });
 
         const { toggleLocalVoiceTurn } = await import('./localVoiceEngine');
-        await toggleLocalVoiceTurn('s1');
-        await toggleLocalVoiceTurn('s1');
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
 
         expect(daemonVoiceAgentStartTurnStream).toHaveBeenCalledTimes(1);
         expect(expoSpeechSpeak).toHaveBeenCalledTimes(1);

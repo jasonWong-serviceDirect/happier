@@ -2,6 +2,7 @@ import { storage } from '@/sync/domains/state/storage';
 import { ensureVoiceCarrierSessionForSessionRoot } from '@/voice/agent/voiceCarrierSession';
 import { voiceAgentSessions } from '@/voice/agent/voiceAgentSessions';
 import { VOICE_AGENT_GLOBAL_SESSION_ID } from '@/voice/agent/voiceAgentGlobalSessionId';
+import { isLocalVoiceAgentActive } from '@/voice/local/localVoiceEngine';
 
 function normalizeNonEmptyString(value: unknown): string | null {
   const trimmed = String(value ?? '').trim();
@@ -23,9 +24,9 @@ export async function teleportVoiceAgentToSessionRoot(params: Readonly<{ session
   const voice = state?.settings?.voice ?? null;
   if (voice?.providerId !== 'local_conversation') return { ok: false, code: 'VOICE_TELEPORT_UNAVAILABLE' };
 
-  const adapterCfg = voice?.adapters?.local_conversation ?? null;
-  if (adapterCfg?.conversationMode !== 'agent') return { ok: false, code: 'VOICE_TELEPORT_UNAVAILABLE' };
+  if (!isLocalVoiceAgentActive(VOICE_AGENT_GLOBAL_SESSION_ID)) return { ok: false, code: 'VOICE_TELEPORT_UNAVAILABLE' };
 
+  const adapterCfg = voice?.adapters?.local_conversation ?? null;
   const agentCfg = adapterCfg?.agent ?? null;
   if (agentCfg?.stayInVoiceHome === true) return { ok: false, code: 'VOICE_TELEPORT_BLOCKED_BY_HOME' };
   if (agentCfg?.teleportEnabled === false) return { ok: false, code: 'VOICE_TELEPORT_DISABLED' };

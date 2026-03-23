@@ -59,16 +59,14 @@ export function VoiceSurface(props: Readonly<{ variant: VoiceSurfaceVariant; ses
       ? (typeof props.sessionId === 'string' ? props.sessionId : null)
       : (typeof lastFocusedSessionId === 'string' ? lastFocusedSessionId : null);
 
-  const localConversationMode =
-    providerId === 'local_conversation' ? (voice?.adapters?.local_conversation?.conversationMode ?? 'direct_session') : null;
   const allowsGlobalStart =
-    providerId === 'realtime_elevenlabs' || (providerId === 'local_conversation' && localConversationMode === 'agent');
+    providerId === 'realtime_elevenlabs' || (providerId === 'local_conversation' && props.variant === 'sidebar');
 
   const localAgentCfg = providerId === 'local_conversation' ? voice?.adapters?.local_conversation?.agent ?? null : null;
   const canTeleportToSessionRoot =
     props.variant === 'session'
     && providerId === 'local_conversation'
-    && localConversationMode === 'agent'
+    && snap.sessionId === VOICE_AGENT_GLOBAL_SESSION_ID
     && localAgentCfg?.backend === 'daemon'
     && localAgentCfg?.teleportEnabled !== false
     && localAgentCfg?.stayInVoiceHome !== true
@@ -109,7 +107,6 @@ export function VoiceSurface(props: Readonly<{ variant: VoiceSurfaceVariant; ses
       props.variant === 'sidebar' &&
       activityFeedEnabled &&
       providerId === 'local_conversation' &&
-      localConversationMode === 'agent' &&
       voiceAgentTranscriptPersistenceMode === 'persistent';
 
     if (!shouldHydrateVoiceAgentTranscript) {
@@ -120,7 +117,7 @@ export function VoiceSurface(props: Readonly<{ variant: VoiceSurfaceVariant; ses
 
 	    hydratedVoiceAgentEpochRef.current = voiceAgentTranscriptEpoch;
 	    fireAndForget(hydrateVoiceAgentActivityFromCarrierSession(), { tag: 'VoiceSurface.hydrateVoiceAgentActivityFromCarrierSession' });
-	  }, [activityFeedEnabled, localConversationMode, voiceAgentTranscriptEpoch, voiceAgentTranscriptPersistenceMode, props.variant, providerId]);
+	  }, [activityFeedEnabled, voiceAgentTranscriptEpoch, voiceAgentTranscriptPersistenceMode, props.variant, providerId]);
 
   const lastStatusRef = React.useRef(snap.status);
   React.useEffect(() => {
@@ -190,7 +187,7 @@ export function VoiceSurface(props: Readonly<{ variant: VoiceSurfaceVariant; ses
 	      return;
 	    }
 	    const resolvedStartSessionId =
-	      providerId === 'local_conversation' && localConversationMode === 'agent' && props.variant === 'sidebar'
+	      providerId === 'local_conversation' && props.variant === 'sidebar'
 	        ? ''
 	        : (allowsGlobalStart ? (startSessionId ?? '') : startSessionId);
 	    if (!resolvedStartSessionId && !allowsGlobalStart) return;

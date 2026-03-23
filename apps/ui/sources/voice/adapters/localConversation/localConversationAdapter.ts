@@ -32,9 +32,8 @@ export function createLocalConversationVoiceAdapter(): VoiceAdapterController {
   const id = 'local_conversation';
 
   const resolveConversationSessionId = (sessionId: string): string => {
-    const settings: any = storage.getState().settings;
-    const mode = settings?.voice?.adapters?.local_conversation?.conversationMode ?? 'direct_session';
-    return mode === 'agent' ? VOICE_AGENT_GLOBAL_SESSION_ID : sessionId;
+    const trimmed = String(sessionId ?? '').trim();
+    return trimmed.length > 0 ? trimmed : VOICE_AGENT_GLOBAL_SESSION_ID;
   };
 
   const getSnapshot = (): VoiceSessionSnapshot => {
@@ -58,11 +57,11 @@ export function createLocalConversationVoiceAdapter(): VoiceAdapterController {
 
   const toggle = async (opts: Readonly<{ sessionId: string }>) => {
     const settings: any = storage.getState().settings;
-    const mode = settings?.voice?.adapters?.local_conversation?.conversationMode ?? 'direct_session';
     const agentCfg = settings?.voice?.adapters?.local_conversation?.agent ?? {};
     const startSessionId = String(opts.sessionId ?? '').trim();
+    const effectiveMode = startSessionId.length > 0 ? 'direct_session' : 'agent';
 
-    if (mode === 'agent') {
+    if (effectiveMode === 'agent') {
       const stayInVoiceHome = agentCfg?.stayInVoiceHome === true;
       if (!stayInVoiceHome && startSessionId) {
         await ensureVoiceCarrierSessionForSessionRoot({ sessionId: startSessionId }).catch(() => {});
@@ -71,7 +70,7 @@ export function createLocalConversationVoiceAdapter(): VoiceAdapterController {
       }
     }
 
-    const resolvedSessionId = mode === 'agent' ? VOICE_AGENT_GLOBAL_SESSION_ID : opts.sessionId;
+    const resolvedSessionId = effectiveMode === 'agent' ? VOICE_AGENT_GLOBAL_SESSION_ID : opts.sessionId;
     const snap = getSnapshot();
     if (snap.sessionId && snap.sessionId !== resolvedSessionId && snap.status !== 'disconnected') {
       await stopLocalVoiceSession();

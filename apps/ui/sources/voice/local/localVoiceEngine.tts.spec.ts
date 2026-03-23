@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { VOICE_AGENT_GLOBAL_SESSION_ID } from '@/voice/agent/voiceAgentGlobalSessionId';
 import {
     createdAudioPlayers,
     daemonVoiceAgentStart,
@@ -408,6 +409,10 @@ describe('local voice engine TTS behavior', () => {
                     },
                 },
             },
+            sessions: {
+                ...storage.getState().sessions,
+                sys_voice: { id: 'sys_voice', modelMode: 'default', metadata: { systemSessionV1: { v: 1, key: 'voice_carrier', hidden: true } } },
+            },
         });
 
         daemonVoiceAgentStart.mockResolvedValueOnce({
@@ -426,8 +431,8 @@ describe('local voice engine TTS behavior', () => {
             });
 
         const { toggleLocalVoiceTurn } = await import('./localVoiceEngine');
-        await toggleLocalVoiceTurn('s1');
-        const stopPromise = toggleLocalVoiceTurn('s1');
+        await toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
+        const stopPromise = toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
 
         for (let i = 0; i < 200 && createdAudioPlayers.length === 0; i++) {
             await Promise.resolve();

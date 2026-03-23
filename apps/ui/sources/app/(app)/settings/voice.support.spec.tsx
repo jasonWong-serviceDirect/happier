@@ -324,34 +324,6 @@ describe('VoiceSettingsScreen (voice settings UX)', () => {
         expect(titles).not.toContain('settingsVoice.privacy.shareToolArgs');
     });
 
-    it('does not use confirm modals for local conversation mode selection', async () => {
-        const { Modal } = await import('@/modal');
-
-        // Enable local conversation so the section renders.
-        voiceState.providerId = 'local_conversation';
-
-        const VoiceSettingsScreen = (await import('./voice')).default;
-
-        let tree!: ReactTestRenderer;
-        act(() => {
-            tree = renderer.create(React.createElement(VoiceSettingsScreen));
-        });
-        await act(async () => {});
-
-        const conversationModeItem = tree.root
-            .findAll((n) => n.props?.title === 'settingsVoice.local.conversationMode')
-            .find((n) => typeof n.props?.onPress === 'function');
-
-        expect(conversationModeItem).toBeTruthy();
-
-        await act(async () => {
-            conversationModeItem!.props.onPress?.();
-        });
-        await act(async () => {});
-
-        expect((Modal as any).confirm).not.toHaveBeenCalled();
-    });
-
     it('does not use confirm modals for local voice agent backend selection', async () => {
         const { Modal } = await import('@/modal');
 

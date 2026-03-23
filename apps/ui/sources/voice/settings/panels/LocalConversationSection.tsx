@@ -44,7 +44,6 @@ export function LocalConversationSection(props: {
   const enabledAgentIds = useEnabledAgentIds();
   const [openMenu, setOpenMenu] = React.useState<
     | null
-    | 'conversationMode'
     | 'mediatorBackend'
     | 'mediatorMachineTarget'
     | 'mediatorRootSessionPolicy'
@@ -218,42 +217,6 @@ export function LocalConversationSection(props: {
 
   return (
     <>
-      <ItemGroup title={t('settingsVoice.local.title')} footer={t('settingsVoice.local.footer')}>
-        <DropdownMenu
-          open={openMenu === 'conversationMode'}
-          onOpenChange={(next) => setOpenMenu(next ? 'conversationMode' : null)}
-          variant="selectable"
-          search={false}
-          selectedId={cfg.conversationMode}
-          showCategoryTitles={false}
-          matchTriggerWidth={true}
-        connectToTrigger={true}
-        rowKind="item"
-        popoverBoundaryRef={props.popoverBoundaryRef}
-        itemTrigger={{
-          title: t('settingsVoice.local.conversationMode'),
-        }}
-        items={[
-          {
-            id: 'agent',
-            title: 'Voice agent',
-              subtitle: 'Talk to a separate voice agent and commit when ready.',
-              icon: <Ionicons name="chatbubble-ellipses-outline" size={22} color={theme.colors.textSecondary} />,
-            },
-            {
-              id: 'direct_session',
-              title: 'Direct to session',
-              subtitle: 'Send your speech directly into the session as messages.',
-              icon: <Ionicons name="paper-plane-outline" size={22} color={theme.colors.textSecondary} />,
-            },
-          ]}
-          onSelect={(id) => {
-            setCfg({ conversationMode: id as any });
-            setOpenMenu(null);
-          }}
-        />
-      </ItemGroup>
-
       <LocalVoiceSttGroup
         cfgStt={cfg.stt}
         setStt={(next) => setCfg({ stt: next })}
@@ -329,8 +292,6 @@ export function LocalConversationSection(props: {
         popoverBoundaryRef={props.popoverBoundaryRef}
       />
 
-      {cfg.conversationMode === 'agent' ? (
-        <>
           <ItemGroup title="Voice agent">
             <DropdownMenu
               open={openMenu === 'mediatorTranscriptPersistence'}
@@ -1220,8 +1181,6 @@ export function LocalConversationSection(props: {
           }}
         />
       </ItemGroup>
-        </>
-      ) : null}
 
       <ItemGroup title="Network">
         <Item

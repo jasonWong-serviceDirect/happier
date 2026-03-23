@@ -319,7 +319,7 @@ export async function toggleLocalVoiceTurn(sessionId: string): Promise<void> {
 
 	  const prewarmLocalVoiceAgentOnConnect = (params: Readonly<{ settings: any; config: any }>): void => {
 	    const { config } = params;
-	    if (config?.conversationMode !== 'agent' || config?.agent?.prewarmOnConnect !== true) return;
+	    if (sessionId !== VOICE_AGENT_GLOBAL_SESSION_ID || config?.agent?.prewarmOnConnect !== true) return;
 
 	    fireAndForget((async () => {
 	      const networkTimeoutMs = resolveVoiceNetworkTimeoutMs(config?.networkTimeoutMs, 15_000);

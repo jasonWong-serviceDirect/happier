@@ -14,13 +14,17 @@ vi.mock('@/voice/agent/voiceAgentSessions', () => ({
   },
 }));
 
+const isLocalVoiceAgentActiveSpy = vi.fn((_sessionId: string) => true);
+vi.mock('@/voice/local/localVoiceEngine', () => ({
+  isLocalVoiceAgentActive: (sessionId: string) => isLocalVoiceAgentActiveSpy(sessionId),
+}));
+
 const state: any = {
   settings: {
     voice: {
       providerId: 'local_conversation',
       adapters: {
         local_conversation: {
-          conversationMode: 'agent',
           agent: { backend: 'daemon', stayInVoiceHome: false, teleportEnabled: true },
         },
       },
@@ -37,8 +41,8 @@ describe('teleportVoiceAgentToSessionRoot', () => {
     vi.resetModules();
     ensureCarrierSpy.mockReset();
     stopSpy.mockReset();
+    isLocalVoiceAgentActiveSpy.mockReset().mockReturnValue(true);
     state.settings.voice.providerId = 'local_conversation';
-    state.settings.voice.adapters.local_conversation.conversationMode = 'agent';
     state.settings.voice.adapters.local_conversation.agent = { backend: 'daemon', stayInVoiceHome: false, teleportEnabled: true };
   });
 
@@ -48,6 +52,15 @@ describe('teleportVoiceAgentToSessionRoot', () => {
     await expect(teleportVoiceAgentToSessionRoot({ sessionId: 's1' })).resolves.toEqual({ ok: true });
     expect(ensureCarrierSpy).toHaveBeenCalledWith({ sessionId: 's1' });
     expect(stopSpy).toHaveBeenCalledWith(VOICE_AGENT_GLOBAL_SESSION_ID);
+  });
+
+  it('fails closed when voice agent is not active', async () => {
+    isLocalVoiceAgentActiveSpy.mockReturnValue(false);
+    const { teleportVoiceAgentToSessionRoot } = await import('./teleportVoiceAgentToSessionRoot');
+
+    await expect(teleportVoiceAgentToSessionRoot({ sessionId: 's1' })).resolves.toEqual({ ok: false, code: 'VOICE_TELEPORT_UNAVAILABLE' });
+    expect(ensureCarrierSpy).not.toHaveBeenCalled();
+    expect(stopSpy).not.toHaveBeenCalled();
   });
 
   it('fails closed when teleport is disabled', async () => {
