@@ -670,3 +670,64 @@ adb shell monkey -p dev.happier.app.preview -c android.intent.category.LAUNCHER 
 - Steps 2a-2c are lost every prebuild since `android/` is regenerated
 - Server: port 443 (main), 8443 (Whisper STT), 8444 (TTS)
 - For Metro dev server: `sudo sysctl fs.inotify.max_user_watches=524288`
+- **`android/` is gitignored** — all changes to files inside it (MainActivity.kt, AndroidManifest.xml, etc.) are lost on every `expo prebuild`. Native customizations MUST be done via Expo config plugins, not by editing generated files directly.
+
+## Self-Hosted Server Management
+
+The self-hosted server stack has three components that must all be running for voice to work:
+
+### 1. Happier Server (port 3005, proxied by Caddy on 443)
+
+**WARNING:** `yarn service:install` builds a Bun binary with Prisma compiled for macOS. It does NOT work on Linux (throws "Prisma Client could not locate the Query Engine for runtime debian-openssl-3.0.x"). Run from source instead:
+
+```bash
+# Extract Caddy CA cert (needed for daemon TLS)
+docker exec caddy-happier cat /data/caddy/pki/authorities/local/root.crt > /tmp/caddy_root.pem
+
+# Start the light server with correct data directory
+DATABASE_URL="file:/home/jason/.happier/self-host/data/happier-server-light.sqlite" \
+HAPPIER_SERVER_LIGHT_DATA_DIR=/home/jason/.happier/self-host/data \
+HAPPY_SERVER_LIGHT_DATA_DIR=/home/jason/.happier/self-host/data \
+METRICS_PORT=0 \
+nohup yarn --cwd apps/server start:light > /home/jason/.happier/self-host/logs/server-light.out.log 2>&1 &
+```
+
+If the server fails with "table does not exist", run migrations first:
+```bash
+DATABASE_URL="file:/home/jason/.happier/self-host/data/happier-server-light.sqlite" \
+npx prisma migrate deploy --schema=apps/server/prisma/sqlite/schema.prisma
+```
+
+If port 3005 is stuck (zombie socket from crash-looped systemd service): `sudo fuser -k 3005/tcp`
+
+### 2. CLI Daemon (voice agent RPC)
+
+The daemon connects to the server via Socket.io and handles voice agent RPC calls. Without it, voice shows "RPC method not available".
+
+```bash
+NODE_EXTRA_CA_CERTS=/tmp/caddy_root.pem node apps/cli/dist/index.mjs daemon start-sync &
+```
+
+- **`NODE_EXTRA_CA_CERTS`** is required for the Caddy self-signed cert. `NODE_TLS_REJECT_UNAUTHORIZED=0` does NOT work for Socket.io.
+- If credentials are lost, re-authenticate: `NODE_TLS_REJECT_UNAUTHORIZED=0 node apps/cli/dist/index.mjs auth login`
+- **Never kill the daemon blindly** — it holds the socket registration with the server. Restarting requires the server to be up and credentials to be valid.
+- Check daemon logs: `ls -t ~/.happier/logs/*daemon*.log | head -1 | xargs tail -20`
+
+### 3. STT + TTS Servers (ports 8443 and 8444)
+
+These run separately (Docker or native). Verify they're up:
+```bash
+ss -tlnp sport = :8443  # Whisper STT
+ss -tlnp sport = :8444  # TTS
+```
+
+### Voice App Settings
+- STT base URL: `https://100.94.82.56:8443`
+- STT model: `Systran/faster-whisper-small`
+- TTS base URL: `https://100.94.82.56:8444`
+
+### Startup Order
+1. Caddy (Docker) — usually always running
+2. Happier server (from source, see above)
+3. CLI daemon (with `NODE_EXTRA_CA_CERTS`)
+4. STT + TTS servers
