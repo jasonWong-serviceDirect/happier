@@ -236,6 +236,8 @@ const baseExpoConfig = {
         },
         plugins: [
             require("./plugins/withEinkCompatibility.js"),
+            require("./plugins/withVoiceAssistant.js"),
+            require("./plugins/withSelfHostNetwork.js"),
             [
                 "expo-router",
                 {
