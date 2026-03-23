@@ -941,10 +941,6 @@ function SessionViewLoaded({ sessionId, session, jumpToSeq }: { sessionId: strin
                     }
 
                     const resolved = resolveSessionComposerSend({ input: message, executionRunsEnabled });
-                    if (resolved.kind === 'client.clear_input') {
-                        setMessage('');
-                        return;
-                    }
                     if (resolved.kind === 'noop') {
                         return;
                     }
