@@ -19,6 +19,7 @@ class HappierAudioStreamNativeModule : Module() {
   private var stopFlag = AtomicBoolean(false)
   private var aec: AcousticEchoCanceler? = null
   private var ns: NoiseSuppressor? = null
+  private var vadDetector: SileroVadDetector? = null
 
   override fun definition() = ModuleDefinition {
     Name("HappierAudioStreamNative")
@@ -77,6 +78,24 @@ class HappierAudioStreamNativeModule : Module() {
       stopFlag.set(false)
       audioRecord.startRecording()
 
+      // Try to load Silero VAD model from bundled assets.
+      var vad: SileroVadDetector? = null
+      try {
+        val ctx = appContext.reactContext ?: appContext.currentActivity
+        if (ctx != null) {
+          val modelStream = ctx.assets.open("silero_vad.onnx")
+          vad = SileroVadDetector(modelStream)
+        }
+      } catch (_: Throwable) {
+        // VAD unavailable — speechProbability will be -1.
+      }
+      vadDetector = vad
+
+      // Silero VAD needs 512 mono samples (1024 bytes PCM16LE) per window.
+      val vadWindowBytes = 512 * 2
+      val vadAccumulator = ByteArrayOutputStream()
+      var lastSpeechProb = -1.0f
+
       val readBuffer = ByteArray(bufferSize)
       val accumulator = ByteArrayOutputStream()
 
@@ -86,6 +105,23 @@ class HappierAudioStreamNativeModule : Module() {
             val read = audioRecord.read(readBuffer, 0, readBuffer.size)
             if (read <= 0) continue
             accumulator.write(readBuffer, 0, read)
+
+            // Also accumulate for VAD (mono only; if stereo, we'd need to downmix first).
+            if (vad != null && channels == 1) {
+              vadAccumulator.write(readBuffer, 0, read)
+              while (vadAccumulator.size() >= vadWindowBytes) {
+                val vadAll = vadAccumulator.toByteArray()
+                val vadChunk = vadAll.copyOfRange(0, vadWindowBytes)
+                val vadRest = if (vadAll.size > vadWindowBytes) vadAll.copyOfRange(vadWindowBytes, vadAll.size) else ByteArray(0)
+                vadAccumulator.reset()
+                if (vadRest.isNotEmpty()) vadAccumulator.write(vadRest)
+                try {
+                  lastSpeechProb = vad.process(vadChunk)
+                } catch (_: Throwable) {
+                  lastSpeechProb = -1.0f
+                }
+              }
+            }
 
             while (accumulator.size() >= frameBytes && frameBytes > 0) {
               val all = accumulator.toByteArray()
@@ -101,7 +137,8 @@ class HappierAudioStreamNativeModule : Module() {
                   "streamId" to streamId,
                   "pcm16leBase64" to base64,
                   "sampleRate" to sampleRate,
-                  "channels" to channels
+                  "channels" to channels,
+                  "speechProbability" to lastSpeechProb.toDouble()
                 )
               )
             }
@@ -142,6 +179,8 @@ class HappierAudioStreamNativeModule : Module() {
     aec = null
     try { ns?.release() } catch (_: Throwable) {}
     ns = null
+    try { vadDetector?.close() } catch (_: Throwable) {}
+    vadDetector = null
 
     val audioRecord = record
     record = null

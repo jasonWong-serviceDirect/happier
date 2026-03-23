@@ -84,9 +84,11 @@ const httpStreamingSttController = createHttpStreamingSttController({
     });
   },
   onSpeechStart: (_sessionId: string) => {
-    // Barge-in is deferred to after STT confirms real speech (see onAutoStopTurn).
-    // Interrupting here on energy VAD alone causes false barge-ins from noise that
-    // Whisper then hallucinates on.
+    // With Silero neural VAD, speech_start is reliable (not triggered by noise),
+    // so we can safely interrupt TTS immediately for fast barge-in.
+    if (getLocalVoiceState().status === 'speaking' && isVoiceBargeInEnabled(storage.getState().settings)) {
+      playbackController.interrupt();
+    }
   },
 });
 

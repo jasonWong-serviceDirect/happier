@@ -3,6 +3,8 @@ export type AudioStreamFrameEvent = Readonly<{
   pcm16leBase64: string;
   sampleRate: number;
   channels: number;
+  /** Silero VAD speech probability (0.0–1.0). -1 if VAD is unavailable. */
+  speechProbability: number;
 }>;
 
 export type HappierAudioStreamNativeModule = Readonly<{

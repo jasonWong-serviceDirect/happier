@@ -1,6 +1,7 @@
 import { getOptionalHappierAudioStreamNativeModule } from '@happier-dev/audio-stream-native';
 import { decodeBase64 } from '@/encryption/base64';
-import { createEnergyVad, DEFAULT_ENERGY_VAD_CONFIG, type EnergyVad } from '@/voice/input/energyVad';
+import { DEFAULT_ENERGY_VAD_CONFIG } from '@/voice/input/energyVad';
+import { createNeuralVad, DEFAULT_NEURAL_VAD_CONFIG, type NeuralVad } from '@/voice/input/neuralVad';
 import { encodePcm16leFramesToWav } from '@/voice/input/encodePcm16leToWav';
 import { transcribeRecordedAudioWithHttpStt } from '@/voice/input/HttpSttController';
 
@@ -15,6 +16,7 @@ type AudioStreamFrameEvent = {
   pcm16leBase64: string;
   sampleRate: number;
   channels: number;
+  speechProbability?: number;
 };
 
 type AudioStreamModuleLike = {
@@ -27,7 +29,7 @@ type HttpStreamingHandle = {
   sessionId: string;
   streamId: string;
   subscriptions: { remove(): void }[];
-  vad: EnergyVad;
+  vad: NeuralVad;
   collectedFrames: Uint8Array[];
   hasSpeech: boolean;
 };
@@ -104,16 +106,21 @@ export function createHttpStreamingSttController(deps: {
     const frameMs = 20;
 
     const vadConfig = {
-      ...DEFAULT_ENERGY_VAD_CONFIG,
+      ...DEFAULT_NEURAL_VAD_CONFIG,
       maxSilenceFrames: Math.max(1, Math.round(silenceMs / frameMs)),
       minSpeechFrames: Math.max(1, Math.round(minSpeechMs / frameMs)),
+      energyFallback: {
+        ...DEFAULT_ENERGY_VAD_CONFIG,
+        maxSilenceFrames: Math.max(1, Math.round(silenceMs / frameMs)),
+        minSpeechFrames: Math.max(1, Math.round(minSpeechMs / frameMs)),
+      },
     };
 
     const sampleRate = 16000;
     const channels = 1;
 
     const { streamId } = await audioStream.start({ sampleRate, channels, frameMs });
-    const vad = createEnergyVad(vadConfig);
+    const vad = createNeuralVad(vadConfig);
 
     const subscriptions: { remove(): void }[] = [];
     subscriptions.push(
@@ -127,7 +134,8 @@ export function createHttpStreamingSttController(deps: {
           return;
         }
 
-        const vadEvent = handle.vad.pushFrame(pcmBytes);
+        const speechProb = typeof event.speechProbability === 'number' ? event.speechProbability : -1;
+        const vadEvent = handle.vad.pushFrame(pcmBytes, speechProb);
 
         if (vadEvent?.kind === 'speech_start') {
           deps.onSpeechStart?.(sessionId);
