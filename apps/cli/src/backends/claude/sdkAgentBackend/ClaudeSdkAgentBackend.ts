@@ -124,6 +124,7 @@ export class ClaudeSdkAgentBackend implements AgentBackend {
         cwd: this.opts.cwd,
         model: model ?? undefined,
         canCallTool,
+        ...(this.opts.permissionPolicy === 'yolo' ? { permissionMode: 'bypassPermissions' as const } : {}),
         settingsPath: this.opts.settingsPath,
         env: this.env,
         ...(params.resume ? { resume: params.resume } : {}),

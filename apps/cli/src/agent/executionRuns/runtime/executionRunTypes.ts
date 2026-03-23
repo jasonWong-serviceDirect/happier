@@ -63,7 +63,7 @@ export type ExecutionRunState = Readonly<{
     chatModelId: string;
     commitModelId: string;
     commitIsolation: boolean;
-    permissionPolicy: 'no_tools' | 'read_only';
+    permissionPolicy: 'yolo' | 'no_tools' | 'read_only';
     idleTtlSeconds: number;
     initialContext: string;
     verbosity: 'short' | 'balanced';

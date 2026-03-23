@@ -181,7 +181,7 @@ export async function startExecutionRun(args: Readonly<{
       const epoch = Number.isFinite(epochRaw) && epochRaw >= 0 ? Math.floor(epochRaw) : 0;
       const persistenceMode = args.params.transcript?.persistenceMode === 'persistent' ? 'persistent' : 'ephemeral';
 
-      const permissionPolicy = args.params.permissionMode === 'no_tools' ? 'no_tools' : 'read_only';
+      const permissionPolicy = args.params.permissionMode === 'no_tools' ? 'no_tools' : args.params.permissionMode === 'yolo' ? 'yolo' : 'read_only';
       const initialContext = [String(args.params.initialContext ?? '').trim(), String(args.params.instructions ?? '').trim()]
         .filter((t) => t.length > 0)
         .join('\n\n');
