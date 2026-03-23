@@ -5,6 +5,7 @@ import { runtimeFetch } from '@/utils/system/runtimeFetch';
 import { fetchWithTimeout, resolveVoiceNetworkTimeoutMs } from '@/voice/runtime/fetchWithTimeout';
 import { buildOpenAiTranscriptionRequest } from '@/voice/local/openaiCompat';
 import { RecordingPresets } from 'expo-audio';
+import { getActiveServerSnapshot } from '@/sync/domains/server/serverRuntime';
 
 export class MissingSttBaseUrlError extends Error {
   constructor() {
@@ -29,7 +30,7 @@ export async function transcribeRecordedAudioWithHttpStt(params: {
   const stt = adapter?.stt ?? null;
   const openaiCompat = (stt?.openaiCompat ?? stt) as any;
 
-  const sttBaseUrl = (openaiCompat?.baseUrl ?? '').trim();
+  const sttBaseUrl = (openaiCompat?.baseUrl ?? '').trim() || deriveSttBaseUrlFromServer();
   if (!sttBaseUrl) {
     throw new MissingSttBaseUrlError();
   }
@@ -75,4 +76,14 @@ function guessMimeType(uri: string): string {
   if (lower.endsWith('.wav')) return 'audio/wav';
   if (lower.endsWith('.mp3')) return 'audio/mpeg';
   return 'audio/mp4';
+}
+
+function deriveSttBaseUrlFromServer(): string {
+  try {
+    const url = new URL(getActiveServerSnapshot().serverUrl);
+    url.port = '8443';
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return '';
+  }
 }

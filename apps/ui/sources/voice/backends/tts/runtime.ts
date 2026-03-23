@@ -6,6 +6,7 @@ import { speakOpenAiCompatText } from '@/voice/output/TtsController';
 import type { VoiceLocalTtsSettings } from '@/sync/domains/settings/voiceLocalTtsSettings';
 import type { VoicePlaybackStopperRegistrar } from '@/voice/runtime/VoicePlaybackController';
 import { resolveKokoroOperationTimeoutMs } from '@/voice/kokoro/config/kokoroConfig';
+import { getActiveServerSnapshot } from '@/sync/domains/server/serverRuntime';
 
 export async function speakWithLocalTtsProvider(ctx: {
   text: string;
@@ -95,7 +96,7 @@ export async function speakWithLocalTtsProvider(ctx: {
   }
 
   // openai_compat
-  const baseUrl = String(ctx.tts.openaiCompat.baseUrl ?? '').trim();
+  const baseUrl = String(ctx.tts.openaiCompat.baseUrl ?? '').trim() || deriveTtsBaseUrlFromServer();
   if (!baseUrl) return;
   const apiKey = ctx.tts.openaiCompat.apiKey ? (sync.decryptSecretValue(ctx.tts.openaiCompat.apiKey) ?? null) : null;
   const model = ctx.tts.openaiCompat.model ?? 'tts-1';
@@ -113,4 +114,14 @@ export async function speakWithLocalTtsProvider(ctx: {
     timeoutMs: ctx.networkTimeoutMs,
     registerPlaybackStopper: ctx.registerPlaybackStopper,
   }).catch(() => {});
+}
+
+function deriveTtsBaseUrlFromServer(): string {
+  try {
+    const url = new URL(getActiveServerSnapshot().serverUrl);
+    url.port = '8444';
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return '';
+  }
 }

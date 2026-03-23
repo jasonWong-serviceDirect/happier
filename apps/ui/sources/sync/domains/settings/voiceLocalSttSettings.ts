@@ -9,7 +9,7 @@ const VoiceLocalSttOpenAiCompatSchema = z
   .object({
     baseUrl: z.string().nullable().default(null),
     apiKey: SecretStringSchema.nullable().default(null),
-    model: z.string().default('whisper-1'),
+    model: z.string().default('Systran/faster-whisper-small'),
   })
   .prefault({});
 
