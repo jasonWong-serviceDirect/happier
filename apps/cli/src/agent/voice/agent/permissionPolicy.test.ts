@@ -3,9 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { createVoiceAgentAcpPermissionHandler, permissionModeForVoiceAgentPolicy } from './permissionPolicy';
 
 describe('voice agent permission policy', () => {
-  it('always maps voice agent policies to read-only mode', () => {
+  it('maps voice agent policies to correct permission modes', () => {
     expect(permissionModeForVoiceAgentPolicy('read_only')).toBe('read-only');
     expect(permissionModeForVoiceAgentPolicy('no_tools')).toBe('read-only');
+    expect(permissionModeForVoiceAgentPolicy('yolo')).toBe('bypassPermissions');
   });
 
   it('approves non-write-like tools in read_only policy', async () => {
@@ -25,5 +26,12 @@ describe('voice agent permission policy', () => {
     const handler = createVoiceAgentAcpPermissionHandler('no_tools');
     await expect(handler.handleToolCall('t1', 'fetch', {})).resolves.toMatchObject({ decision: 'denied' });
     await expect(handler.handleToolCall('t2', 'write_file', {})).resolves.toMatchObject({ decision: 'denied' });
+  });
+
+  it('approves all tools in yolo policy', async () => {
+    const handler = createVoiceAgentAcpPermissionHandler('yolo');
+    await expect(handler.handleToolCall('t1', 'fetch', {})).resolves.toMatchObject({ decision: 'approved' });
+    await expect(handler.handleToolCall('t2', 'write_file', {})).resolves.toMatchObject({ decision: 'approved' });
+    await expect(handler.handleToolCall('t3', 'Bash', {})).resolves.toMatchObject({ decision: 'approved' });
   });
 });

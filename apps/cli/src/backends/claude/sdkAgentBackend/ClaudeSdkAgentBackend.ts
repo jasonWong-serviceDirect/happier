@@ -6,7 +6,7 @@ import { query } from '@/backends/claude/sdk/query';
 import type { SDKAssistantMessage, SDKMessage, SDKResultMessage, SDKSystemMessage } from '@/backends/claude/sdk/types';
 import { createSubprocessStderrAppender, type BoundedTextFileAppender } from '@/agent/runtime/subprocessArtifacts';
 
-export type ClaudeSdkPermissionPolicy = 'no_tools' | 'read_only';
+export type ClaudeSdkPermissionPolicy = 'yolo' | 'no_tools' | 'read_only';
 
 const READ_ONLY_SAFE_TOOL_NAMES = new Set([
   'fetch',
@@ -202,6 +202,13 @@ export class ClaudeSdkAgentBackend implements AgentBackend {
   private buildCanCallTool() {
     if (this.opts.permissionPolicy === 'no_tools') {
       return async () => ({ behavior: 'deny', message: 'Tools are disabled for voice agent.', interrupt: true } as const);
+    }
+
+    if (this.opts.permissionPolicy === 'yolo') {
+      return async (_toolName: string, input: unknown) => {
+        const updatedInput = input && typeof input === 'object' ? (input as Record<string, unknown>) : {};
+        return { behavior: 'allow', updatedInput } as const;
+      };
     }
 
     return async (toolName: string, input: unknown) => {

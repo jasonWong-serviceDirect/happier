@@ -126,7 +126,7 @@ const VoiceLocalConversationSchema = z.object({
 		       * appended under the target machine's `happyHomeDir`.
 		       */
 		      voiceHomeSubdirName: z.string().default('voice-agent'),
-		      permissionPolicy: z.enum(['no_tools', 'read_only']).default('read_only'),
+		      permissionPolicy: z.enum(['yolo', 'no_tools', 'read_only']).default('read_only'),
 		      idleTtlSeconds: z.number().int().min(60).max(21600).default(1800),
 		      prewarmOnConnect: z.boolean().default(false),
 		      resumabilityMode: z.enum(['replay', 'provider_resume']).default('replay'),

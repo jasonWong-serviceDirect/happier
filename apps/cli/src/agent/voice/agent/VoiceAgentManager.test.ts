@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { AgentBackend, AgentId, AgentMessageHandler, SessionId } from '@/agent/core/AgentBackend';
 
-type BackendFactory = (opts: { agentId: AgentId; modelId: string; permissionPolicy: 'no_tools' | 'read_only' }) => AgentBackend;
+type BackendFactory = (opts: { agentId: AgentId; modelId: string; permissionPolicy: 'yolo' | 'no_tools' | 'read_only' }) => AgentBackend;
 
 function createDeterministicBackend(label: string): AgentBackend & { getSeenPrompts(): string[] } {
   const seenPrompts: string[] = [];
@@ -291,7 +291,7 @@ describe('VoiceAgentManager', () => {
   it('passes agentId, model ids, and permission policy to the backend factory', async () => {
     const { VoiceAgentManager } = await import('./VoiceAgentManager');
 
-    const seen: Array<{ agentId: AgentId; modelId: string; permissionPolicy: 'no_tools' | 'read_only' }> = [];
+    const seen: Array<{ agentId: AgentId; modelId: string; permissionPolicy: 'yolo' | 'no_tools' | 'read_only' }> = [];
     const backend = createDeterministicBackend('chat');
     const createBackend: BackendFactory = (opts) => {
       seen.push({ agentId: opts.agentId, modelId: opts.modelId, permissionPolicy: opts.permissionPolicy });
