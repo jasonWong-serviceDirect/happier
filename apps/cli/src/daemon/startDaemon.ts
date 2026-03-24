@@ -1309,6 +1309,21 @@ export async function startDaemon(): Promise<void> {
         memoryWorker.stop();
       }
       await stopControlServer();
+
+          // Kill all tracked child processes so they don't become orphans.
+          const children = getCurrentChildren();
+          if (children.length > 0) {
+            logger.debug(`[DAEMON RUN] Sending SIGTERM to ${children.length} tracked child process(es)`);
+            for (const [pid] of pidToTrackedSession.entries()) {
+              try {
+                process.kill(pid, 'SIGTERM');
+                logger.debug(`[DAEMON RUN] Sent SIGTERM to child PID ${pid}`);
+              } catch {
+                // Process may already be dead — that's fine.
+              }
+            }
+          }
+
 	      await cleanupDaemonState();
 	      await stopCaffeinate();
 	      if (daemonLockHandle) {
