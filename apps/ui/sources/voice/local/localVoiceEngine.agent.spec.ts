@@ -1193,4 +1193,255 @@ describe('local voice engine agent behavior', () => {
         expect(setActiveServerAndSwitch).toHaveBeenCalledWith(expect.objectContaining({ serverId: 'server-b' }));
         expect(routerNavigate).toHaveBeenCalledWith('/session/s_other', expect.any(Object));
     });
+
+    describe('auto-wake on background context updates', () => {
+        async function setupDaemonAgentIdle() {
+            const storage = await getStorage();
+            storage.__setState({
+                settings: {
+                    ...storage.getState().settings,
+                    voice: {
+                        ...storage.getState().settings.voice,
+                        providerId: 'local_conversation',
+                        adapters: {
+                            ...storage.getState().settings.voice.adapters,
+                            local_conversation: {
+                                ...storage.getState().settings.voice.adapters.local_conversation,
+                                conversationMode: 'agent',
+                                stt: {
+                                    ...storage.getState().settings.voice.adapters.local_conversation.stt,
+                                    baseUrl: 'http://localhost:8000',
+                                },
+                                tts: {
+                                    ...storage.getState().settings.voice.adapters.local_conversation.tts,
+                                    autoSpeakReplies: true,
+                                    baseUrl: 'http://localhost:8001',
+                                },
+                                agent: {
+                                    ...storage.getState().settings.voice.adapters.local_conversation.agent,
+                                    backend: 'daemon',
+                                },
+                            },
+                        },
+                    },
+                },
+                sessions: {
+                    ...storage.getState().sessions,
+                    s1: { id: 's1', metadata: { path: '/tmp', host: 'test' } },
+                },
+            });
+
+            daemonVoiceAgentStart.mockResolvedValueOnce({ voiceAgentId: 'va1' });
+
+            // STT mock
+            (globalThis.fetch as any).mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ text: 'hello world' }),
+            });
+            // TTS mock
+            (globalThis.fetch as any).mockResolvedValueOnce({
+                ok: true,
+                arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+            });
+
+            const mod = await import('./localVoiceEngine');
+
+            // Toggle on (start recording) then toggle off (stop + send turn).
+            await mod.toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
+            const stopPromise = mod.toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
+
+            // Flush until TTS audio player is created.
+            for (let i = 0; i < 2000 && createdAudioPlayers.length === 0; i++) {
+                await Promise.resolve();
+            }
+            // Finish TTS playback so engine returns to idle.
+            if (createdAudioPlayers.length > 0) {
+                createdAudioPlayers[0].__emit('playbackStatusUpdate', { didJustFinish: true });
+            }
+            await stopPromise;
+
+            // Verify engine is idle with active session.
+            expect(mod.getLocalVoiceState().status).toBe('idle');
+            expect(mod.getLocalVoiceState().sessionId).toBe(VOICE_AGENT_GLOBAL_SESSION_ID);
+
+            // Reset call counts so we can assert only auto-wake calls.
+            daemonVoiceAgentSendTurn.mockClear();
+
+            return mod;
+        }
+
+        it('triggers a synthetic turn after debounce when context arrives while idle', async () => {
+            vi.useFakeTimers();
+            try {
+                const mod = await setupDaemonAgentIdle();
+
+                // Mock the daemon response for the auto-wake turn.
+                daemonVoiceAgentSendTurn.mockResolvedValueOnce({ assistantText: 'Background results are in.' });
+                (globalThis.fetch as any).mockResolvedValueOnce({
+                    ok: true,
+                    arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+                });
+
+                mod.appendLocalVoiceAgentContextUpdate(VOICE_AGENT_GLOBAL_SESSION_ID, 'Session s1 completed.');
+
+                // Should not fire before the debounce period.
+                await vi.advanceTimersByTimeAsync(1000);
+                expect(daemonVoiceAgentSendTurn).not.toHaveBeenCalled();
+
+                // Fire after debounce.
+                await vi.advanceTimersByTimeAsync(1500);
+                expect(daemonVoiceAgentSendTurn).toHaveBeenCalledTimes(1);
+                expect(daemonVoiceAgentSendTurn.mock.calls[0]?.[0]).toMatchObject({
+                    userText: expect.stringContaining('[background update]'),
+                });
+            } finally {
+                vi.useRealTimers();
+            }
+        }, 30_000);
+
+        it('batches multiple rapid context updates into a single turn', async () => {
+            vi.useFakeTimers();
+            try {
+                const mod = await setupDaemonAgentIdle();
+
+                daemonVoiceAgentSendTurn.mockResolvedValueOnce({ assistantText: 'Got it.' });
+                (globalThis.fetch as any).mockResolvedValueOnce({
+                    ok: true,
+                    arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+                });
+
+                mod.appendLocalVoiceAgentContextUpdate(VOICE_AGENT_GLOBAL_SESSION_ID, 'Update 1');
+                mod.appendLocalVoiceAgentContextUpdate(VOICE_AGENT_GLOBAL_SESSION_ID, 'Update 2');
+                mod.appendLocalVoiceAgentContextUpdate(VOICE_AGENT_GLOBAL_SESSION_ID, 'Update 3');
+
+                await vi.advanceTimersByTimeAsync(2500);
+                expect(daemonVoiceAgentSendTurn).toHaveBeenCalledTimes(1);
+            } finally {
+                vi.useRealTimers();
+            }
+        }, 30_000);
+
+        it('does not auto-wake when engine is not idle', async () => {
+            vi.useFakeTimers();
+            try {
+                const storage = await getStorage();
+                storage.__setState({
+                    settings: {
+                        ...storage.getState().settings,
+                        voice: {
+                            ...storage.getState().settings.voice,
+                            providerId: 'local_conversation',
+                            adapters: {
+                                ...storage.getState().settings.voice.adapters,
+                                local_conversation: {
+                                    ...storage.getState().settings.voice.adapters.local_conversation,
+                                    conversationMode: 'agent',
+                                    tts: {
+                                        ...storage.getState().settings.voice.adapters.local_conversation.tts,
+                                        autoSpeakReplies: true,
+                                        baseUrl: 'http://localhost:8001',
+                                    },
+                                    agent: {
+                                        ...storage.getState().settings.voice.adapters.local_conversation.agent,
+                                        backend: 'daemon',
+                                    },
+                                },
+                            },
+                        },
+                    },
+                });
+
+                const { patchLocalVoiceState } = await import('./localVoiceState');
+                patchLocalVoiceState({ status: 'speaking', sessionId: VOICE_AGENT_GLOBAL_SESSION_ID });
+
+                const mod = await import('./localVoiceEngine');
+                mod.appendLocalVoiceAgentContextUpdate(VOICE_AGENT_GLOBAL_SESSION_ID, 'Update while speaking');
+
+                await vi.advanceTimersByTimeAsync(3000);
+                expect(daemonVoiceAgentSendTurn).not.toHaveBeenCalled();
+            } finally {
+                vi.useRealTimers();
+            }
+        }, 30_000);
+
+        it('does not auto-wake when sessionId is null (no active session)', async () => {
+            vi.useFakeTimers();
+            try {
+                const storage = await getStorage();
+                storage.__setState({
+                    settings: {
+                        ...storage.getState().settings,
+                        voice: {
+                            ...storage.getState().settings.voice,
+                            providerId: 'local_conversation',
+                            adapters: {
+                                ...storage.getState().settings.voice.adapters,
+                                local_conversation: {
+                                    ...storage.getState().settings.voice.adapters.local_conversation,
+                                    conversationMode: 'agent',
+                                    tts: {
+                                        ...storage.getState().settings.voice.adapters.local_conversation.tts,
+                                        autoSpeakReplies: true,
+                                    },
+                                    agent: {
+                                        ...storage.getState().settings.voice.adapters.local_conversation.agent,
+                                        backend: 'daemon',
+                                    },
+                                },
+                            },
+                        },
+                    },
+                });
+
+                // Engine is idle with no sessionId (default state).
+                const mod = await import('./localVoiceEngine');
+                mod.appendLocalVoiceAgentContextUpdate(VOICE_AGENT_GLOBAL_SESSION_ID, 'No session');
+
+                await vi.advanceTimersByTimeAsync(3000);
+                expect(daemonVoiceAgentSendTurn).not.toHaveBeenCalled();
+            } finally {
+                vi.useRealTimers();
+            }
+        }, 30_000);
+
+        it('cancels auto-wake when user starts a turn', async () => {
+            vi.useFakeTimers();
+            try {
+                const mod = await setupDaemonAgentIdle();
+
+                mod.appendLocalVoiceAgentContextUpdate(VOICE_AGENT_GLOBAL_SESSION_ID, 'Context update');
+
+                // User presses the button before debounce fires.
+                await vi.advanceTimersByTimeAsync(500);
+                await mod.toggleLocalVoiceTurn(VOICE_AGENT_GLOBAL_SESSION_ID);
+
+                // Now advance past the debounce; the auto-wake should have been cancelled.
+                await vi.advanceTimersByTimeAsync(3000);
+
+                // sendTurn should NOT have been called with the synthetic text.
+                for (const call of daemonVoiceAgentSendTurn.mock.calls) {
+                    expect(call[0]?.userText).not.toContain('[background update]');
+                }
+            } finally {
+                vi.useRealTimers();
+            }
+        }, 30_000);
+
+        it('cancels auto-wake when session is stopped', async () => {
+            vi.useFakeTimers();
+            try {
+                const mod = await setupDaemonAgentIdle();
+
+                mod.appendLocalVoiceAgentContextUpdate(VOICE_AGENT_GLOBAL_SESSION_ID, 'Context update');
+
+                await vi.advanceTimersByTimeAsync(500);
+                await mod.stopLocalVoiceSession();
+
+                await vi.advanceTimersByTimeAsync(3000);
+                expect(daemonVoiceAgentSendTurn).not.toHaveBeenCalled();
+            } finally {
+                vi.useRealTimers();
+            }
+        }, 30_000);
+    });
 });

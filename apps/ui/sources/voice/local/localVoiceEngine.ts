@@ -30,12 +30,57 @@ import {
   resolveLocalVoiceAdapterSettings,
 } from './localVoiceSettings';
 import { sendVoiceTextTurn as sendVoiceTextTurnImpl } from './sendVoiceTextTurn';
+import { initOverlayBridge, setOverlayVoiceCallbacks, stopVoiceOverlay, teardownOverlayBridge } from '@/voice/overlay/voiceOverlayBridge';
 
 export type { LocalVoiceState, LocalVoiceStatus } from './localVoiceState';
 export { getLocalVoiceState, useLocalVoiceStatus, subscribeLocalVoiceState } from './localVoiceState';
 
 let recorder: InstanceType<typeof AudioModule.AudioRecorder> | null = null;
 let inFlight: Promise<void> | null = null;
+
+// --- Auto-wake: trigger a synthetic turn when background context arrives while idle ---
+let autoWakeTimer: ReturnType<typeof setTimeout> | null = null;
+const AUTO_WAKE_DEBOUNCE_MS = 2_000;
+
+function cancelAutoWake(): void {
+  if (autoWakeTimer !== null) {
+    clearTimeout(autoWakeTimer);
+    autoWakeTimer = null;
+  }
+}
+
+function scheduleAutoWake(sessionId: string): void {
+  const state = getLocalVoiceState();
+  if (state.status !== 'idle' || state.sessionId !== sessionId || inFlight !== null) return;
+
+  const settings = storage.getState().settings as any;
+  const config = settings?.voice?.adapters?.local_conversation ?? {};
+  if (config?.tts?.autoSpeakReplies === false) return;
+
+  cancelAutoWake();
+  autoWakeTimer = setTimeout(() => {
+    autoWakeTimer = null;
+    fireAndForget(executeAutoWakeTurn(sessionId), { tag: 'localVoiceEngine.autoWakeTurn' });
+  }, AUTO_WAKE_DEBOUNCE_MS);
+}
+
+async function executeAutoWakeTurn(sessionId: string): Promise<void> {
+  // Re-check guards — state may have changed during the debounce window.
+  const state = getLocalVoiceState();
+  if (state.status !== 'idle' || state.sessionId !== sessionId || inFlight !== null) return;
+
+  const settings = storage.getState().settings as any;
+  inFlight = sendVoiceTextTurnImpl({
+    sessionId,
+    settings,
+    userText: '[background update]',
+    playbackController,
+    voiceAgentSessions,
+  }).finally(() => {
+    inFlight = null;
+  });
+  await inFlight;
+}
 
 const playbackController = createVoicePlaybackController();
 const deviceSttController = createDeviceSttController({
@@ -266,6 +311,7 @@ async function stopHttpStreamingAndSend(sessionId: string): Promise<void> {
 }
 
 export async function stopLocalVoiceAgent(sessionId: string): Promise<void> {
+  cancelAutoWake();
   deviceSttController.clearHandsFreeSession(sessionId);
   sherpaSttController.clearHandsFreeSession(sessionId);
   httpStreamingSttController.clearHandsFreeSession(sessionId);
@@ -287,9 +333,11 @@ export function isLocalVoiceAgentActive(sessionId: string): boolean {
 
 export function appendLocalVoiceAgentContextUpdate(sessionId: string, update: string): void {
   voiceAgentSessions.appendContextUpdate(sessionId, update);
+  scheduleAutoWake(sessionId);
 }
 
 export async function toggleLocalVoiceTurn(sessionId: string): Promise<void> {
+  cancelAutoWake();
   const realtimeStatus = (storage.getState() as any)?.realtimeStatus;
   if (realtimeStatus === 'connected') {
     return;
@@ -438,6 +486,7 @@ export async function toggleLocalVoiceTurn(sessionId: string): Promise<void> {
 }
 
 export async function stopLocalVoiceSession(): Promise<void> {
+  cancelAutoWake();
   const current = getLocalVoiceState();
   if (!current.sessionId) return;
 
