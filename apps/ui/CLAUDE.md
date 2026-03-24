@@ -726,6 +726,35 @@ ss -tlnp sport = :8444  # TTS
 - STT model: `deepdml/faster-whisper-large-v3-turbo-ct2`
 - TTS base URL: `https://100.94.82.56:8444`
 
+### Rebuilding & Restarting the Daemon
+
+The CLI daemon runs from compiled JS (`apps/cli/dist/`). Changes to these packages are **not picked up** until you rebuild and restart:
+
+- `packages/protocol` — action specs, action IDs, schemas (e.g. adding voice tools)
+- `packages/agents` — voice agent prompt builder, agent utilities
+- `apps/cli` — daemon code, RPC handlers, agent backends
+
+**When to do this:** Any time you modify protocol action specs, voice agent prompts, RPC handlers, or daemon-side logic. The voice agent's system prompt is built from protocol specs at daemon startup — new tools won't appear until the daemon restarts with rebuilt code.
+
+```bash
+# 1. Rebuild the dependency chain
+yarn --cwd packages/protocol build
+yarn --cwd packages/agents build
+yarn --cwd apps/cli build
+
+# 2. Kill the running daemon
+kill $(pgrep -f "daemon start-sync")
+
+# 3. Restart with Caddy CA for TLS
+sleep 2
+NODE_EXTRA_CA_CERTS=/tmp/caddy_root.pem nohup node apps/cli/dist/index.mjs daemon start-sync > /dev/null 2>&1 &
+```
+
+If `/tmp/caddy_root.pem` is missing, extract it first:
+```bash
+docker exec caddy-happier cat /data/caddy/pki/authorities/local/root.crt > /tmp/caddy_root.pem
+```
+
 ### Startup Order
 1. Caddy (Docker) — usually always running
 2. Happier server (from source, see above)
