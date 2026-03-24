@@ -1256,6 +1256,68 @@ export const ACTION_SPECS: readonly ActionSpec[] = Object.freeze([
     },
     inputSchema: z.object({}),
   },
+  {
+    id: 'device.alarm.set',
+    title: 'Set alarm',
+    description: 'Set an alarm on the user\'s Android device using the system clock app. Specify hour (0-23) and minutes (0-59) in 24-hour format, and an optional label.',
+    safety: 'safe',
+    placements: ['voice_panel'],
+    bindings: { voiceClientToolName: 'setAlarm' },
+    examples: {
+      voice: { argsExample: '{"hour":7,"minutes":30,"label":"Wake up"}' },
+    },
+    surfaces: {
+      ui_button: false,
+      ui_slash_command: false,
+      voice_tool: true,
+      voice_action_block: true,
+      mcp: false,
+      session_control_cli: false,
+    },
+    inputHints: {
+      title: 'Set an alarm',
+      fields: [
+        { path: 'hour', title: 'Hour (0-23)', widget: 'text', required: true },
+        { path: 'minutes', title: 'Minutes (0-59)', widget: 'text', required: true },
+        { path: 'label', title: 'Label', widget: 'text' },
+      ],
+    },
+    inputSchema: z.object({
+      hour: z.number().int().min(0).max(23),
+      minutes: z.number().int().min(0).max(59),
+      label: z.string().optional(),
+    }),
+  },
+  {
+    id: 'device.timer.set',
+    title: 'Set timer',
+    description: 'Set a countdown timer on the user\'s Android device using the system clock app. Specify duration in seconds, and an optional label.',
+    safety: 'safe',
+    placements: ['voice_panel'],
+    bindings: { voiceClientToolName: 'setTimer' },
+    examples: {
+      voice: { argsExample: '{"seconds":300,"label":"Pasta timer"}' },
+    },
+    surfaces: {
+      ui_button: false,
+      ui_slash_command: false,
+      voice_tool: true,
+      voice_action_block: true,
+      mcp: false,
+      session_control_cli: false,
+    },
+    inputHints: {
+      title: 'Set a timer',
+      fields: [
+        { path: 'seconds', title: 'Duration (seconds)', widget: 'text', required: true },
+        { path: 'label', title: 'Label', widget: 'text' },
+      ],
+    },
+    inputSchema: z.object({
+      seconds: z.number().int().min(1),
+      label: z.string().optional(),
+    }),
+  },
 ]);
 
 export function listActionSpecs(): readonly ActionSpec[] {

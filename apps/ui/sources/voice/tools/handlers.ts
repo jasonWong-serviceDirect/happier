@@ -8,6 +8,7 @@ import { voiceActivityController } from '@/voice/activity/voiceActivityControlle
 import { createDefaultActionExecutor } from '@/sync/ops/actions/defaultActionExecutor';
 import { getActiveServerSnapshot } from '@/sync/domains/server/serverRuntime';
 import { readScreenForVoiceTool } from './actionImpl/readScreen';
+import { setAlarmForVoiceTool, setTimerForVoiceTool } from './actionImpl/deviceAlarm';
 
 function normalizeId(raw: unknown): string {
   return String(raw ?? '').trim();
@@ -224,6 +225,8 @@ export function createVoiceToolHandlers(
   handlers.sendSessionMessage = sendSessionMessage;
   handlers.processPermissionRequest = processPermissionRequest;
   handlers.readScreen = async () => readScreenForVoiceTool();
+  handlers.setAlarm = async (parameters: unknown) => setAlarmForVoiceTool(parameters);
+  handlers.setTimer = async (parameters: unknown) => setTimerForVoiceTool(parameters);
 
   return Object.freeze(handlers);
 }

@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.provider.AlarmClock
 import android.provider.Settings
 import android.text.TextUtils
 
@@ -84,6 +85,33 @@ class VoiceOverlayModule : Module() {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             ctx().startActivity(intent)
+        }
+
+        AsyncFunction("setAlarm") { hour: Int, minutes: Int, label: String? ->
+            val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
+                putExtra(AlarmClock.EXTRA_HOUR, hour)
+                putExtra(AlarmClock.EXTRA_MINUTES, minutes)
+                putExtra(AlarmClock.EXTRA_SKIP_UI, true)
+                if (!label.isNullOrBlank()) {
+                    putExtra(AlarmClock.EXTRA_MESSAGE, label)
+                }
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            ctx().startActivity(intent)
+            return@AsyncFunction mapOf("ok" to true, "hour" to hour, "minutes" to minutes, "label" to (label ?: ""))
+        }
+
+        AsyncFunction("setTimer") { seconds: Int, label: String? ->
+            val intent = Intent(AlarmClock.ACTION_SET_TIMER).apply {
+                putExtra(AlarmClock.EXTRA_LENGTH, seconds)
+                putExtra(AlarmClock.EXTRA_SKIP_UI, true)
+                if (!label.isNullOrBlank()) {
+                    putExtra(AlarmClock.EXTRA_MESSAGE, label)
+                }
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            ctx().startActivity(intent)
+            return@AsyncFunction mapOf("ok" to true, "seconds" to seconds, "label" to (label ?: ""))
         }
 
         AsyncFunction("getScreenContent") {

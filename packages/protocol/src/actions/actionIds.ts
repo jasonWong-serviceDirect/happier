@@ -46,6 +46,10 @@ export const ACTION_IDS = [
 
   // Screen reading (accessibility service)
   'screen.read',
+
+  // Device actions (Android intents)
+  'device.alarm.set',
+  'device.timer.set',
 ] as const;
 
 export const ActionIdSchema = z.enum(ACTION_IDS);
