@@ -4,7 +4,7 @@ import * as React from 'react';
 import * as Notifications from 'expo-notifications';
 import { Typography } from '@/constants/Typography';
 import { createHeader } from '@/components/navigation/Header';
-import { Platform, TouchableOpacity } from 'react-native';
+import { Linking, Platform, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { isRunningOnMac } from '@/utils/platform/platform';
 import { coerceRelativeRoute } from '@/utils/path/routeUtils';
@@ -342,6 +342,33 @@ export default function RootLayout() {
         return () => {
             cancelled = true;
         };
+    }, [auth.isAuthenticated]);
+
+    // Auto-start voice agent when launched via ACTION_ASSIST (long-press home).
+    // MainActivity deep-links to happier://?assist=1 which opens the dashboard normally.
+    React.useEffect(() => {
+        if (!auth.isAuthenticated) return;
+
+        const handleAssistUrl = (url: string | null) => {
+            if (!url) return;
+            try {
+                const parsed = new URL(url);
+                if (parsed.searchParams.get('assist') !== '1') return;
+            } catch {
+                return;
+            }
+            fireAndForget((async () => {
+                const { voiceSessionManager } = await import('@/voice/session/voiceSession');
+                voiceSessionManager.toggle('');
+            })(), { tag: 'RootLayout.assistVoiceAutoStart' });
+        };
+
+        // Check initial URL (cold start via ASSIST)
+        Linking.getInitialURL().then(handleAssistUrl).catch(() => {});
+
+        // Listen for new URLs (warm start via ASSIST)
+        const sub = Linking.addEventListener('url', (event) => handleAssistUrl(event.url));
+        return () => sub.remove();
     }, [auth.isAuthenticated]);
 
     // Avoid rendering protected screens for a frame during redirect.

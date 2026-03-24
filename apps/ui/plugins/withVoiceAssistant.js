@@ -3,9 +3,8 @@ const { withMainActivity, withAndroidManifest } = require('@expo/config-plugins'
 /**
  * Expo config plugin that:
  * 1. Adds ACTION_ASSIST intent filter to MainActivity (long-press home launches voice)
- * 2. Patches MainActivity.kt to deep-link to the voice route AND start the overlay service
- *    when overlay permission is granted. The deep link starts the JS voice session via
- *    voiceSessionManager; the overlay service shows the floating widget on top.
+ * 2. Patches MainActivity.kt to deep-link to the voice route when ACTION_ASSIST fires,
+ *    which opens the app and auto-starts the voice agent session.
  */
 
 function withVoiceAssistantIntent(config) {
@@ -40,16 +39,10 @@ function withVoiceAssistantIntent(config) {
         let contents = config.modResults.contents;
 
         // Add imports if not present
-        if (!contents.includes('android.provider.Settings')) {
+        if (!contents.includes('import android.content.Intent')) {
             contents = contents.replace(
                 'import android.os.Bundle',
-                'import android.content.Intent\nimport android.net.Uri\nimport android.os.Bundle\nimport android.provider.Settings'
-            );
-        }
-        if (!contents.includes('import android.content.Intent') && contents.includes('android.provider.Settings')) {
-            contents = contents.replace(
-                'import android.provider.Settings',
-                'import android.content.Intent\nimport android.net.Uri\nimport android.provider.Settings'
+                'import android.content.Intent\nimport android.net.Uri\nimport android.os.Bundle'
             );
         }
 
@@ -57,19 +50,12 @@ function withVoiceAssistantIntent(config) {
         if (!contents.includes('ACTION_ASSIST')) {
             contents = contents.replace(
                 'super.onCreate(null)',
-                `// When launched as assistant (long-press home), always deep-link to voice route
-    // so the JS voice session starts. Also start the overlay service if permitted.
+                `// When launched as assistant (long-press home), deep-link to voice route
+    // so the app opens and the JS voice session auto-starts.
     if (intent?.action == Intent.ACTION_ASSIST) {
       intent = Intent(intent).apply {
         action = Intent.ACTION_VIEW
-        data = Uri.parse("happier://voice")
-      }
-      // Start floating overlay widget alongside the voice route
-      if (Settings.canDrawOverlays(this)) {
-        try {
-          val overlayIntent = Intent(this, dev.happier.voiceoverlay.VoiceOverlayService::class.java)
-          startForegroundService(overlayIntent)
-        } catch (_: Exception) { /* overlay is best-effort */ }
+        data = Uri.parse("happier://?assist=1")
       }
     }
 
@@ -82,16 +68,9 @@ function withVoiceAssistantIntent(config) {
                     '/**\n   * Returns the name of the main component',
                     `override fun onNewIntent(intent: Intent) {
     val resolved = if (intent.action == Intent.ACTION_ASSIST) {
-      // Start floating overlay widget
-      if (Settings.canDrawOverlays(this)) {
-        try {
-          val overlayIntent = Intent(this, dev.happier.voiceoverlay.VoiceOverlayService::class.java)
-          startForegroundService(overlayIntent)
-        } catch (_: Exception) { /* overlay is best-effort */ }
-      }
       Intent(intent).apply {
         action = Intent.ACTION_VIEW
-        data = Uri.parse("happier://voice")
+        data = Uri.parse("happier://?assist=1")
       }
     } else intent
     super.onNewIntent(resolved)
