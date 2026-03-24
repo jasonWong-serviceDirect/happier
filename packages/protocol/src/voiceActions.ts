@@ -50,9 +50,13 @@ export function extractVoiceActionsFromAssistantText(
   const endIndex = assistantText.indexOf(VOICE_ACTIONS_BLOCK.endTag, startIndex);
   if (endIndex < 0) return { assistantText: assistantText.trim(), actions: [] };
 
-  const jsonRaw = assistantText
+  let jsonRaw = assistantText
     .slice(startIndex + VOICE_ACTIONS_BLOCK.startTag.length, endIndex)
     .trim();
+
+  // Strip code fences that LLMs sometimes wrap around the JSON.
+  const fenceMatch = jsonRaw.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?\s*```$/);
+  if (fenceMatch) jsonRaw = fenceMatch[1].trim();
 
   try {
     const parsedJson = JSON.parse(jsonRaw) as unknown;
